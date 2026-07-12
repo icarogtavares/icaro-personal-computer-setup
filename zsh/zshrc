@@ -166,9 +166,9 @@ _fzf_comprun() {
 eval "$(zoxide init zsh --cmd cd)"
 
 # eza
-alias ls='eza --long --git --icons --no-filesize --no-time --no-user --no-permissions'
-alias ll='eza -l --icons --git'
-alias la='eza -la --icons --git'
+alias ls='eza --icons'
+alias ll='eza -l'
+alias la='eza -la'
 alias lt='eza --tree --level=2 --icons'
 
 # bat 
