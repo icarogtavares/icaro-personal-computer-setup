@@ -70,7 +70,7 @@ Because configs are symlinks into this repo, keep the clone in a permanent locat
 | --- | --- | --- |
 | `claude` | `~/.claude/CLAUDE.md`, `~/.claude/RTK.md`, `~/.claude/settings.json`, `~/.claude/statusline.sh`, `~/.claude/hooks/notify.sh` | [rtk](https://www.rtk-ai.app/), `jq`, [Claude Code](https://claude.ai/code) |
 | `wezterm` | `~/.wezterm.lua` | [WezTerm](https://wezterm.org), MesloLGS / Hack / Symbols Nerd Fonts |
-| `zsh` | `~/.zshrc`, `~/.zprofile`, `~/.p10k.zsh` | [Oh My Zsh](https://ohmyz.sh), [powerlevel10k](https://github.com/romkatv/powerlevel10k), [zsh-autosuggestions](https://github.com/zsh-users/zsh-autosuggestions), [zsh-syntax-highlighting](https://github.com/zsh-users/zsh-syntax-highlighting), `fzf`, `eza`, `bat`, `zoxide` |
+| `zsh` | `~/.zshrc`, `~/.zprofile`, `~/.p10k.zsh` | [Oh My Zsh](https://ohmyz.sh), [powerlevel10k](https://github.com/romkatv/powerlevel10k), [zsh-autosuggestions](https://github.com/zsh-users/zsh-autosuggestions), [zsh-syntax-highlighting](https://github.com/zsh-users/zsh-syntax-highlighting), [fzf](https://junegunn.github.io/fzf/), [eza](https://github.com/eza-community/eza), [bat](https://github.com/sharkdp/bat), [zoxide](https://github.com/ajeetdsouza/zoxide) |
 
 Only individual files are linked into `~/.claude/` — the rest of that directory is machine state (projects, history, caches) and stays out of git.
 
