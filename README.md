@@ -1,8 +1,11 @@
-# icaro-personal-computer-setup
+# Icaro's PC Setup
 
-Everything needed to rebuild my macOS machine. Configuration files live in this repo, and an interactive installer symlinks them into place and installs the tools they depend on.
+Main goals:
+1. Everything needed to rebuild my macOS machine.
+2. Configuration files live in this repo
+3. An interactive installer symlinks them into place and installs the tools they depend on.
 
-Configs are grouped in topic modules — the layout used by most dotfiles repos — and placed as **symlinks**, so this repo stays the single source of truth: edit any config where it lives, see the change with `git diff`, commit, push. A plain bash script does the work because it needs no extra tooling (unlike [Stow](https://www.gnu.org/software/stow/) or [chezmoi](https://www.chezmoi.io)) and gives exact control over backups.
+Configs are grouped in topic modules and placed as **symlinks**, so this repo stays the single source of truth: edit any config where it lives, see the change with `git diff`, commit, push.
 
 ## Layout
 
@@ -70,13 +73,13 @@ Because configs are symlinks into this repo, keep the clone in a permanent locat
 | --- | --- | --- |
 | `claude` | `~/.claude/CLAUDE.md`, `~/.claude/RTK.md`, `~/.claude/settings.json`, `~/.claude/statusline.sh`, `~/.claude/hooks/notify.sh` | [rtk](https://www.rtk-ai.app/), `jq`, [Claude Code](https://claude.ai/code) |
 | `wezterm` | `~/.wezterm.lua` | [WezTerm](https://wezterm.org), MesloLGS / Hack / Symbols Nerd Fonts |
-| `zsh` | `~/.zshrc`, `~/.zprofile`, `~/.p10k.zsh` | [Oh My Zsh](https://ohmyz.sh), [powerlevel10k](https://github.com/romkatv/powerlevel10k), [zsh-autosuggestions](https://github.com/zsh-users/zsh-autosuggestions), [zsh-syntax-highlighting](https://github.com/zsh-users/zsh-syntax-highlighting), [fzf](https://junegunn.github.io/fzf/), [eza](https://github.com/eza-community/eza), [bat](https://github.com/sharkdp/bat), [zoxide](https://github.com/ajeetdsouza/zoxide) |
+| `zsh` | `~/.zshrc`, `~/.zprofile`, `~/.p10k.zsh` | [Oh My Zsh](https://ohmyz.sh), [powerlevel10k](https://github.com/romkatv/powerlevel10k), [zsh-autosuggestions](https://github.com/zsh-users/zsh-autosuggestions), [zsh-syntax-highlighting](https://github.com/zsh-users/zsh-syntax-highlighting), `fzf`, `eza`, `bat`, `zoxide` |
 
 Only individual files are linked into `~/.claude/` — the rest of that directory is machine state (projects, history, caches) and stays out of git.
 
-## Backups: nothing is ever deleted
+## Backup Strategy: NOTHING IN YOUR MACHINE IS EVER DELETED
 
-When a real file already exists where a symlink should go, it is renamed in place:
+When a real file already exists where a symlink should go, it's renamed in place:
 
 ```
 ~/.zshrc  →  ~/.zshrc-backup
@@ -91,7 +94,7 @@ To restore an original: delete the symlink, rename the backup back.
 
 ## Updating configs
 
-The live files are symlinks, so edit them wherever is convenient (`vim ~/.zshrc` or in the repo) — either way the repo sees the change:
+The live files are symlinks, so edit them wherever is convenient (`code ~/.zshrc` or in the repo) — either way the repo sees the change:
 
 ```bash
 git diff
