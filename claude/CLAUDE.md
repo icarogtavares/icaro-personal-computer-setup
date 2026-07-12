@@ -1,5 +1,3 @@
-@RTK.md
-
 # Global Configuration for Claude
 
 ## 1. Interaction & Communication
