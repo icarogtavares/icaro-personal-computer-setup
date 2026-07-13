@@ -26,7 +26,7 @@ jobs:
     timeout-minutes: 15
     steps:
       - uses: actions/checkout@v7
-      - uses: actions/cache@v4
+      - uses: actions/cache@v6
         with:
           path: tests/.deps/bats-core
           key: bats-core-v1.13.0
@@ -37,7 +37,7 @@ jobs:
     timeout-minutes: 15
     steps:
       - uses: actions/checkout@v7
-      - uses: actions/cache@v4
+      - uses: actions/cache@v6
         with:
           path: tests/.deps/bats-core
           key: bats-core-v1.13.0
