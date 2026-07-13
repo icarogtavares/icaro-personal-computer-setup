@@ -328,7 +328,7 @@ menu_restore() {
 }
 
 menu_draw() {
-  local i mark desc
+  local i mark desc pointer
   if [ "$1" = "1" ]; then
     printf '\033[%dA\033[J' "$((${#MODULES[@]} + 4))"
   fi
@@ -339,16 +339,30 @@ menu_draw() {
     if [ "${checked[i]}" = "1" ]; then
       mark="${GREEN}x${RESET}"
     fi
+    pointer="  "
+    if [ "$i" = "$cursor" ]; then
+      pointer="${BOLD}> ${RESET}"
+    fi
     desc="$(describe_module "${MODULES[$i]}")"
-    printf '  [%s] %d. %-10s %s\n' "$mark" "$((i + 1))" "${MODULES[$i]}" "${desc:0:56}"
+    printf '%s[%s] %d. %-10s %s\n' "$pointer" "$mark" "$((i + 1))" "${MODULES[$i]}" "${desc:0:56}"
     i=$((i + 1))
   done
-  printf '\n  1-%d toggle · a all · n none · enter install · q quit\n' "${#MODULES[@]}"
+  printf '\n  ↑↓ move · space/1-%d toggle · a all · n none · enter install · q quit\n' "${#MODULES[@]}"
+}
+
+toggle_row() {
+  if [ "${checked[$1]}" = "1" ]; then
+    checked[$1]=0
+  else
+    checked[$1]=1
+  fi
+  menu_draw 1
 }
 
 interactive_select() {
-  local checked count i key
+  local checked count i key cursor
   count=${#MODULES[@]}
+  cursor=0
   checked=()
   i=0
   while [ "$i" -lt "$count" ]; do
@@ -360,20 +374,32 @@ interactive_select() {
   menu_draw 0
   while true; do
     key=""
-    read -rsn1 key || key="q"
+    IFS= read -rsn1 key || key="q"
     case "$key" in
       $'\033')
+        key=""
         read -rsn2 -t 1 key || true
+        case "$key" in
+          "[A")
+            if [ "$cursor" -gt 0 ]; then
+              cursor=$((cursor - 1))
+              menu_draw 1
+            fi
+            ;;
+          "[B")
+            if [ "$cursor" -lt "$((count - 1))" ]; then
+              cursor=$((cursor + 1))
+              menu_draw 1
+            fi
+            ;;
+        esac
+        ;;
+      " ")
+        toggle_row "$cursor"
         ;;
       [1-9])
         if [ "$key" -le "$count" ]; then
-          i=$((key - 1))
-          if [ "${checked[i]}" = "1" ]; then
-            checked[i]=0
-          else
-            checked[i]=1
-          fi
-          menu_draw 1
+          toggle_row "$((key - 1))"
         fi
         ;;
       a|A)

@@ -71,3 +71,38 @@ setup() {
   assert_contains "$output" $'\033[?25h'
   assert_home_empty
 }
+
+@test "the pointer starts on the first row" {
+  run_menu q
+  [ "$status" -eq 0 ]
+  assert_contains "$output" "> [ ] 1. claude"
+}
+
+@test "arrow down and space toggle the row under the cursor" {
+  run_menu DOWN SPACE q
+  [ "$status" -eq 0 ]
+  assert_contains "$output" "> [x] 2. wezterm"
+}
+
+@test "space-selected modules install on enter" {
+  run_menu DOWN SPACE ENTER
+  [ "$status" -eq 0 ]
+  assert_symlink "$FAKE_HOME/.wezterm.lua" "$REPO_ROOT/wezterm/wezterm.lua"
+  [ ! -e "$FAKE_HOME/.claude/CLAUDE.md" ]
+  [ ! -e "$FAKE_HOME/.zshrc" ]
+}
+
+@test "the cursor clamps at the top and bottom" {
+  run_menu UP SPACE DOWN DOWN DOWN DOWN SPACE ENTER
+  [ "$status" -eq 0 ]
+  assert_symlink "$FAKE_HOME/.claude/CLAUDE.md" "$REPO_ROOT/claude/CLAUDE.md"
+  assert_symlink "$FAKE_HOME/.zshrc" "$REPO_ROOT/zsh/zshrc"
+  [ ! -e "$FAKE_HOME/.wezterm.lua" ]
+}
+
+@test "plain escape leaves the menu running" {
+  run_menu ESC PAUSE 1 q
+  [ "$status" -eq 0 ]
+  assert_contains "$output" "[x] 1. claude"
+  assert_home_empty
+}

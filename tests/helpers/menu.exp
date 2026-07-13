@@ -19,6 +19,11 @@ foreach key $keys {
     switch -- $key {
         ENTER { send "\r" }
         CTRL_C { send "\003" }
+        UP { send "\033\[A" }
+        DOWN { send "\033\[B" }
+        SPACE { send " " }
+        ESC { send "\033" }
+        PAUSE { after 2000 }
         default { send -- $key }
     }
 }
