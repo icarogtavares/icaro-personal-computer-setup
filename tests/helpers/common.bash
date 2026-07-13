@@ -70,6 +70,16 @@ EOF
   chmod +x "$STUB_BIN/curl"
 }
 
+make_failing_curl_stub() {
+  cat >"$STUB_BIN/curl" <<EOF
+#!/bin/bash
+printf '%s\n' "curl \$*" >>"$STATE_DIR/calls.log"
+printf '%s\n' "$2"
+exit $1
+EOF
+  chmod +x "$STUB_BIN/curl"
+}
+
 remove_stub() {
   rm -f "$STUB_BIN/$1"
 }

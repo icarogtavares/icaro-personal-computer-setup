@@ -234,7 +234,9 @@ install_claude() {
       info "would install Claude Code"
     else
       info "installing Claude Code"
-      curl -fsSL https://claude.ai/install.sh | bash
+      local claude_installer
+      claude_installer="$(curl -fsSL https://claude.ai/install.sh)"
+      /bin/bash -c "$claude_installer"
     fi
   fi
   info "[claude] linking configs"

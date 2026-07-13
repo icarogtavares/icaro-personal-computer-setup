@@ -64,6 +64,14 @@ setup() {
   assert_calls_contain "curl -fsSL https://claude.ai/install.sh"
 }
 
+@test "a failing claude installer download executes nothing" {
+  make_failing_curl_stub 23 "echo claude-partial >>'$STATE_DIR/calls.log'"
+  run_install claude
+  [ "$status" -ne 0 ]
+  assert_calls_contain "curl -fsSL https://claude.ai/install.sh"
+  refute_calls_contain "claude-partial"
+}
+
 @test "claude skips the installer when a claude binary is on the path" {
   make_stub claude
   run_install claude
