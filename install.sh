@@ -12,7 +12,7 @@ BREW_PREFIXES="${SETUP_BREW_PREFIXES:-/opt/homebrew /usr/local}"
 WEZTERM_APP="${SETUP_WEZTERM_APP:-/Applications/WezTerm.app}"
 SELECTED=""
 
-MODULE_TABLE='claude|Claude Code config (CLAUDE.md, settings, statusline, hooks) + rtk, jq
+MODULE_TABLE='claude|Claude Code config (CLAUDE.md, settings, statusline, hooks) + jq
 wezterm|WezTerm config + app and Nerd Fonts
 zsh|Oh My Zsh, powerlevel10k, plugins, fzf/eza/bat/zoxide + zsh dotfiles'
 
@@ -224,7 +224,6 @@ ensure_clone() {
 install_claude() {
   info "[claude] dependencies"
   if ensure_homebrew; then
-    ensure_formula rtk
     ensure_formula jq
   fi
   if deps_enabled; then
@@ -241,7 +240,6 @@ install_claude() {
   fi
   info "[claude] linking configs"
   link_file "$REPO_DIR/claude/CLAUDE.md" "$HOME/.claude/CLAUDE.md"
-  link_file "$REPO_DIR/claude/RTK.md" "$HOME/.claude/RTK.md"
   link_file "$REPO_DIR/claude/settings.json" "$HOME/.claude/settings.json"
   link_file "$REPO_DIR/claude/statusline.sh" "$HOME/.claude/statusline.sh"
   link_file "$REPO_DIR/claude/hooks/notify.sh" "$HOME/.claude/hooks/notify.sh"

@@ -13,11 +13,10 @@ setup() {
   assert_symlink "$FAKE_HOME/.p10k.zsh" "$REPO_ROOT/zsh/p10k.zsh"
 }
 
-@test "claude module links all five files including the hooks dir" {
+@test "claude module links all four files including the hooks dir" {
   run_install --skip-deps claude
   [ "$status" -eq 0 ]
   assert_symlink "$FAKE_HOME/.claude/CLAUDE.md" "$REPO_ROOT/claude/CLAUDE.md"
-  assert_symlink "$FAKE_HOME/.claude/RTK.md" "$REPO_ROOT/claude/RTK.md"
   assert_symlink "$FAKE_HOME/.claude/settings.json" "$REPO_ROOT/claude/settings.json"
   assert_symlink "$FAKE_HOME/.claude/statusline.sh" "$REPO_ROOT/claude/statusline.sh"
   assert_symlink "$FAKE_HOME/.claude/hooks/notify.sh" "$REPO_ROOT/claude/hooks/notify.sh"
@@ -33,7 +32,6 @@ setup() {
   run_install --skip-deps --all
   [ "$status" -eq 0 ]
   assert_symlink "$FAKE_HOME/.claude/CLAUDE.md" "$REPO_ROOT/claude/CLAUDE.md"
-  assert_symlink "$FAKE_HOME/.claude/RTK.md" "$REPO_ROOT/claude/RTK.md"
   assert_symlink "$FAKE_HOME/.claude/settings.json" "$REPO_ROOT/claude/settings.json"
   assert_symlink "$FAKE_HOME/.claude/statusline.sh" "$REPO_ROOT/claude/statusline.sh"
   assert_symlink "$FAKE_HOME/.claude/hooks/notify.sh" "$REPO_ROOT/claude/hooks/notify.sh"

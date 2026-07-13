@@ -48,7 +48,7 @@ setup() {
   [ "$status" -eq 0 ]
   refute_contains "$output" "Install it now?"
   assert_calls_contain "brew shellenv"
-  assert_calls_contain "brew install rtk"
+  assert_calls_contain "brew install jq"
   assert_symlink "$FAKE_HOME/.claude/CLAUDE.md" "$REPO_ROOT/claude/CLAUDE.md"
 }
 
@@ -59,7 +59,7 @@ setup() {
   assert_contains "$output" "Install it now?"
   assert_calls_contain "curl -fsSL https://raw.githubusercontent.com/Homebrew/install/HEAD/install.sh"
   assert_calls_contain "brew shellenv"
-  assert_calls_contain "brew install rtk"
+  assert_calls_contain "brew install jq"
 }
 
 @test "--yes installs homebrew without prompting" {
@@ -67,5 +67,5 @@ setup() {
   run_install --yes claude
   [ "$status" -eq 0 ]
   refute_contains "$output" "Install it now?"
-  assert_calls_contain "brew install rtk"
+  assert_calls_contain "brew install jq"
 }

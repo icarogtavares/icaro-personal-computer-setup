@@ -22,7 +22,6 @@ setup() {
   run_install --all --dry-run
   [ "$status" -eq 0 ]
   assert_contains "$output" "would link $FAKE_HOME/.claude/CLAUDE.md -> $REPO_ROOT/claude/CLAUDE.md"
-  assert_contains "$output" "would link $FAKE_HOME/.claude/RTK.md -> $REPO_ROOT/claude/RTK.md"
   assert_contains "$output" "would link $FAKE_HOME/.claude/settings.json -> $REPO_ROOT/claude/settings.json"
   assert_contains "$output" "would link $FAKE_HOME/.claude/statusline.sh -> $REPO_ROOT/claude/statusline.sh"
   assert_contains "$output" "would link $FAKE_HOME/.claude/hooks/notify.sh -> $REPO_ROOT/claude/hooks/notify.sh"
@@ -35,7 +34,7 @@ setup() {
 @test "--all --dry-run only queries brew and never installs" {
   run_install --all --dry-run
   [ "$status" -eq 0 ]
-  assert_calls_contain "brew list --formula rtk"
+  assert_calls_contain "brew list --formula jq"
   refute_calls_contain "brew install"
   refute_calls_contain "curl"
   refute_calls_contain "git"

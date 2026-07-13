@@ -18,11 +18,10 @@ setup() {
   assert_symlink "$FAKE_HOME/.zshrc" "$REPO_ROOT/zsh/zshrc"
 }
 
-@test "claude installs rtk and jq through brew when missing" {
+@test "claude installs jq through brew when missing" {
   run_install claude
   [ "$status" -eq 0 ]
-  assert_calls_contain "brew list --formula rtk"
-  assert_calls_contain "brew install rtk"
+  assert_calls_contain "brew list --formula jq"
   assert_calls_contain "brew install jq"
 }
 
@@ -30,9 +29,7 @@ setup() {
   set_brew_list_exit 0
   run_install claude
   [ "$status" -eq 0 ]
-  assert_contains "$output" "rtk already installed"
   assert_contains "$output" "jq already installed"
-  refute_calls_contain "brew install rtk"
   refute_calls_contain "brew install jq"
 }
 
