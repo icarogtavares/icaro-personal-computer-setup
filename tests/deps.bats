@@ -15,7 +15,7 @@ setup() {
   run_install_env SETUP_SKIP_DEPS=1 --all
   [ "$status" -eq 0 ]
   assert_no_calls
-  assert_symlink "$FAKE_HOME/.zshrc" "$REPO_ROOT/modules/zsh/zshrc"
+  assert_file_equals "$FAKE_HOME/.zshrc" "$REPO_ROOT/modules/zsh/zshrc"
 }
 
 @test "claude installs jq through brew when missing" {
@@ -105,4 +105,33 @@ setup() {
   assert_calls_contain "brew install eza"
   assert_calls_contain "brew install bat"
   assert_calls_contain "brew install zoxide"
+}
+
+@test "zsh-core alone skips the plugin clones" {
+  run_install zsh-core
+  [ "$status" -eq 0 ]
+  assert_calls_contain "git clone --depth=1 https://github.com/romkatv/powerlevel10k.git $FAKE_HOME/.oh-my-zsh/custom/themes/powerlevel10k"
+  refute_calls_contain "zsh-autosuggestions.git"
+  refute_calls_contain "zsh-syntax-highlighting.git"
+}
+
+@test "an auto-added zsh-core clones only the selected plugin" {
+  run_install zsh-autosuggestions
+  [ "$status" -eq 0 ]
+  assert_calls_contain "curl -fsSL https://raw.githubusercontent.com/ohmyzsh/ohmyzsh/master/tools/install.sh"
+  assert_calls_contain "git clone --depth=1 https://github.com/zsh-users/zsh-autosuggestions.git $FAKE_HOME/.oh-my-zsh/custom/plugins/zsh-autosuggestions"
+  refute_calls_contain "zsh-syntax-highlighting.git"
+}
+
+@test "zsh-git needs no clone of its own" {
+  run_install zsh-git
+  [ "$status" -eq 0 ]
+  refute_calls_contain "zsh-users"
+}
+
+@test "claude-statusline alone installs jq but not the claude cli" {
+  run_install claude-statusline
+  [ "$status" -eq 0 ]
+  assert_calls_contain "brew install jq"
+  refute_calls_contain "claude.ai/install.sh"
 }

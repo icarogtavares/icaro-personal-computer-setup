@@ -219,6 +219,50 @@ assert_symlink() {
   fi
 }
 
+assert_regular_file() {
+  if [ ! -f "$1" ] || [ -L "$1" ]; then
+    printf 'expected regular file: %s\n' "$1" >&2
+    return 1
+  fi
+}
+
+assert_file_equals() {
+  assert_regular_file "$1" || return 1
+  if ! cmp -s "$2" "$1"; then
+    printf 'file %s differs from %s\n' "$1" "$2" >&2
+    return 1
+  fi
+}
+
+assert_executable() {
+  if [ ! -x "$1" ]; then
+    printf 'expected executable: %s\n' "$1" >&2
+    return 1
+  fi
+}
+
+assert_valid_json() {
+  command -v python3 >/dev/null 2>&1 || return 0
+  if ! python3 -m json.tool "$1" >/dev/null 2>&1; then
+    printf 'invalid json: %s\n' "$1" >&2
+    return 1
+  fi
+}
+
+assert_line_present() {
+  if ! grep -qx -- "$2" "$1"; then
+    printf 'expected line "%s" in %s\ncontent:\n%s\n' "$2" "$1" "$(cat "$1")" >&2
+    return 1
+  fi
+}
+
+refute_line_present() {
+  if grep -qx -- "$2" "$1"; then
+    printf 'unexpected line "%s" in %s\n' "$2" "$1" >&2
+    return 1
+  fi
+}
+
 assert_home_empty() {
   local entries
   entries="$(ls -A "$FAKE_HOME")"

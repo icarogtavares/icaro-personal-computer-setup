@@ -36,7 +36,7 @@ setup() {
   assert_contains "$output" $'\033[0;32mx\033[0m'
 }
 
-@test "--help documents every flag, env var and module" {
+@test "--help documents every flag, env var and component" {
   run_install --help
   [ "$status" -eq 0 ]
   assert_contains "$output" "--all"
@@ -50,7 +50,13 @@ setup() {
   assert_contains "$output" "SETUP_BREW_PREFIXES"
   assert_contains "$output" "SETUP_WEZTERM_APP"
   assert_contains "$output" "NO_COLOR"
-  assert_contains "$output" "claude"
+  assert_contains "$output" "claude-settings"
+  assert_contains "$output" "claude-statusline"
+  assert_contains "$output" "claude-notify"
   assert_contains "$output" "wezterm"
-  assert_contains "$output" "zsh"
+  assert_contains "$output" "zsh-core"
+  assert_contains "$output" "zsh-git"
+  assert_contains "$output" "zsh-autosuggestions"
+  assert_contains "$output" "zsh-syntax-highlighting"
+  assert_contains "$output" "Module aliases select every component of a module: claude wezterm zsh"
 }
