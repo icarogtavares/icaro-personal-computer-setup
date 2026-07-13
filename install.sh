@@ -302,45 +302,99 @@ parse_args() {
   done
 }
 
-interactive_select() {
+menu_restore() {
+  printf '\033[?25h'
+  stty echo 2>/dev/null || true
+}
+
+menu_draw() {
+  local i mark desc
+  if [ "$1" = "1" ]; then
+    printf '\033[%dA\033[J' "$((${#MODULES[@]} + 4))"
+  fi
   printf '%s\n\n' "${BOLD}icaro-personal-computer-setup${RESET}"
-  local m
-  for m in "${MODULES[@]}"; do
-    printf '  %-10s %s\n' "$m" "$(describe_module "$m")"
+  i=0
+  while [ "$i" -lt "${#MODULES[@]}" ]; do
+    mark=" "
+    if [ "${checked[i]}" = "1" ]; then
+      mark="${GREEN}x${RESET}"
+    fi
+    desc="$(describe_module "${MODULES[$i]}")"
+    printf '  [%s] %d. %-10s %s\n' "$mark" "$((i + 1))" "${MODULES[$i]}" "${desc:0:56}"
+    i=$((i + 1))
   done
-  printf '\n'
-  local selection tokens token picked
+  printf '\n  1-%d toggle · a all · n none · enter install · q quit\n' "${#MODULES[@]}"
+}
+
+interactive_select() {
+  local checked count i key
+  count=${#MODULES[@]}
+  checked=()
+  i=0
+  while [ "$i" -lt "$count" ]; do
+    checked[i]=0
+    i=$((i + 1))
+  done
+  trap 'menu_restore; exit 130' INT TERM
+  printf '\033[?25l'
+  menu_draw 0
   while true; do
-    printf 'Modules to install ("a" for all, "q" to quit): '
-    selection=""
-    read -r selection || exit 0
-    selection="${selection//,/ }"
-    tokens=()
-    read -ra tokens <<<"$selection"
-    if [ "${#tokens[@]}" -eq 0 ]; then
-      continue
-    fi
-    picked=""
-    for token in "${tokens[@]}"; do
-      case "$token" in
-        q|quit) exit 0 ;;
-        a|all) picked="${MODULES[*]}" ;;
-        *)
-          if known_module "$token"; then
-            picked="$picked $token"
+    key=""
+    read -rsn1 key || key="q"
+    case "$key" in
+      $'\033')
+        read -rsn2 -t 1 key || true
+        ;;
+      [1-9])
+        if [ "$key" -le "$count" ]; then
+          i=$((key - 1))
+          if [ "${checked[i]}" = "1" ]; then
+            checked[i]=0
           else
-            warn "unknown module: $token"
-            picked=""
-            break
+            checked[i]=1
           fi
-          ;;
-      esac
-    done
-    if [ -n "${picked// /}" ]; then
-      SELECTED="$picked"
-      return 0
-    fi
+          menu_draw 1
+        fi
+        ;;
+      a|A)
+        i=0
+        while [ "$i" -lt "$count" ]; do
+          checked[i]=1
+          i=$((i + 1))
+        done
+        menu_draw 1
+        ;;
+      n|N)
+        i=0
+        while [ "$i" -lt "$count" ]; do
+          checked[i]=0
+          i=$((i + 1))
+        done
+        menu_draw 1
+        ;;
+      q|Q)
+        menu_restore
+        trap - INT TERM
+        exit 0
+        ;;
+      "")
+        break
+        ;;
+    esac
   done
+  menu_restore
+  trap - INT TERM
+  i=0
+  while [ "$i" -lt "$count" ]; do
+    if [ "${checked[i]}" = "1" ]; then
+      SELECTED="$SELECTED ${MODULES[$i]}"
+    fi
+    i=$((i + 1))
+  done
+  if [ -z "${SELECTED// /}" ]; then
+    info "nothing selected"
+    exit 0
+  fi
 }
 
 main() {
