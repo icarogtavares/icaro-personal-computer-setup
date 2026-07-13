@@ -7,6 +7,7 @@ ALL=0
 DRY_RUN=0
 ASSUME_YES=0
 SKIP_DEPS="${SETUP_SKIP_DEPS:-0}"
+BREW_PREFIXES="${SETUP_BREW_PREFIXES:-/opt/homebrew /usr/local}"
 SELECTED=""
 
 MODULE_TABLE='claude|Claude Code config (CLAUDE.md, settings, statusline, hooks) + rtk, jq
@@ -92,8 +93,9 @@ Options:
   -h, --help       Show this help
 
 Environment:
-  SETUP_SKIP_DEPS=1  Same as --skip-deps
-  NO_COLOR           Disable colored output
+  SETUP_SKIP_DEPS=1     Same as --skip-deps
+  SETUP_BREW_PREFIXES   Homebrew prefixes to probe (default: /opt/homebrew /usr/local)
+  NO_COLOR              Disable colored output
 
 Existing files are never deleted: they are renamed to <name>-backup,
 or <name>-backup-<timestamp> when a backup already exists.
@@ -139,8 +141,9 @@ link_file() {
 }
 
 activate_brew_prefix() {
-  local prefix
-  for prefix in /opt/homebrew /usr/local; do
+  local prefixes prefix
+  read -r -a prefixes <<<"$BREW_PREFIXES"
+  for prefix in ${prefixes[@]+"${prefixes[@]}"}; do
     if [ -x "$prefix/bin/brew" ]; then
       eval "$("$prefix/bin/brew" shellenv)"
       return 0

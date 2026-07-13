@@ -7,7 +7,8 @@ sandbox_setup() {
   FAKE_HOME="${BATS_TEST_TMPDIR:?}/home"
   STUB_BIN="${BATS_TEST_TMPDIR:?}/bin"
   STATE_DIR="${BATS_TEST_TMPDIR:?}/state"
-  export FAKE_HOME STUB_BIN STATE_DIR
+  FAKE_BREW_PREFIX="${BATS_TEST_TMPDIR:?}/brew"
+  export FAKE_HOME STUB_BIN STATE_DIR FAKE_BREW_PREFIX
   mkdir -p "$FAKE_HOME" "$STUB_BIN" "$STATE_DIR"
   : >"$STATE_DIR/calls.log"
   make_brew_stub
@@ -24,10 +25,16 @@ EOF
   chmod +x "$STUB_BIN/$1"
 }
 
-make_brew_stub() {
-  cat >"$STUB_BIN/brew" <<EOF
+write_brew_stub() {
+  local bin_dir="$1" shellenv_dir="${2:-$1}"
+  mkdir -p "$bin_dir"
+  cat >"$bin_dir/brew" <<EOF
 #!/bin/bash
 printf '%s\n' "brew \$*" >>"$STATE_DIR/calls.log"
+if [ "\${1:-}" = "shellenv" ]; then
+  printf 'export PATH="%s:\$PATH"\n' "$shellenv_dir"
+  exit 0
+fi
 if [ "\${1:-}" = "list" ]; then
   if [ -f "$STATE_DIR/brew.list.exit" ]; then
     exit "\$(cat "$STATE_DIR/brew.list.exit")"
@@ -36,7 +43,30 @@ if [ "\${1:-}" = "list" ]; then
 fi
 exit 0
 EOF
-  chmod +x "$STUB_BIN/brew"
+  chmod +x "$bin_dir/brew"
+}
+
+make_brew_stub() {
+  write_brew_stub "$STUB_BIN"
+}
+
+make_brew_prefix() {
+  write_brew_stub "$FAKE_BREW_PREFIX/bin"
+}
+
+stage_homebrew_install() {
+  write_brew_stub "$STATE_DIR/pending/bin" "$FAKE_BREW_PREFIX/bin"
+  cat >"$STUB_BIN/curl" <<EOF
+#!/bin/bash
+printf '%s\n' "curl \$*" >>"$STATE_DIR/calls.log"
+case "\$*" in
+  *Homebrew/install*)
+    printf "mv '%s' '%s'\n" "$STATE_DIR/pending" "$FAKE_BREW_PREFIX"
+    ;;
+esac
+exit 0
+EOF
+  chmod +x "$STUB_BIN/curl"
 }
 
 remove_stub() {
@@ -48,7 +78,8 @@ set_brew_list_exit() {
 }
 
 install_sandboxed() {
-  env -i HOME="$FAKE_HOME" PATH="$STUB_BIN:/usr/bin:/bin" TERM=dumb NO_COLOR=1 /bin/bash "$INSTALL_SH" "$@"
+  env -i HOME="$FAKE_HOME" PATH="$STUB_BIN:/usr/bin:/bin" TERM=dumb NO_COLOR=1 \
+    SETUP_BREW_PREFIXES="$FAKE_BREW_PREFIX" /bin/bash "$INSTALL_SH" "$@"
 }
 
 install_sandboxed_env() {
@@ -65,7 +96,8 @@ install_sandboxed_env() {
         ;;
     esac
   done
-  env -i HOME="$FAKE_HOME" PATH="$STUB_BIN:/usr/bin:/bin" TERM=dumb ${pairs[@]+"${pairs[@]}"} /bin/bash "$INSTALL_SH" "$@"
+  env -i HOME="$FAKE_HOME" PATH="$STUB_BIN:/usr/bin:/bin" TERM=dumb \
+    SETUP_BREW_PREFIXES="$FAKE_BREW_PREFIX" ${pairs[@]+"${pairs[@]}"} /bin/bash "$INSTALL_SH" "$@"
 }
 
 install_stdout_only() {
@@ -170,11 +202,5 @@ assert_no_calls() {
   if [ -s "$STATE_DIR/calls.log" ]; then
     printf 'expected no calls, recorded:\n%s\n' "$(cat "$STATE_DIR/calls.log")" >&2
     return 1
-  fi
-}
-
-skip_unless_brew_probe_free() {
-  if [ -x /opt/homebrew/bin/brew ] || [ -x /usr/local/bin/brew ]; then
-    skip "real Homebrew prefix present"
   fi
 }

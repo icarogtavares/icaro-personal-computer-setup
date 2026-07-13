@@ -3,7 +3,6 @@
 setup() {
   load 'helpers/common'
   sandbox_setup
-  skip_unless_brew_probe_free
   remove_stub brew
 }
 
@@ -33,4 +32,32 @@ setup() {
   run_install_stdin n claude
   [ "$status" -eq 0 ]
   assert_contains "$output" "Homebrew is required for dependencies. Install it now? [y/N]"
+}
+
+@test "an existing brew prefix is discovered and activated" {
+  make_brew_prefix
+  run_install claude
+  [ "$status" -eq 0 ]
+  refute_contains "$output" "Install it now?"
+  assert_calls_contain "brew shellenv"
+  assert_calls_contain "brew install rtk"
+  assert_symlink "$FAKE_HOME/.claude/CLAUDE.md" "$REPO_ROOT/claude/CLAUDE.md"
+}
+
+@test "accepting the homebrew prompt installs and activates brew" {
+  stage_homebrew_install
+  run_install_stdin y claude
+  [ "$status" -eq 0 ]
+  assert_contains "$output" "Install it now?"
+  assert_calls_contain "curl -fsSL https://raw.githubusercontent.com/Homebrew/install/HEAD/install.sh"
+  assert_calls_contain "brew shellenv"
+  assert_calls_contain "brew install rtk"
+}
+
+@test "--yes installs homebrew without prompting" {
+  stage_homebrew_install
+  run_install --yes claude
+  [ "$status" -eq 0 ]
+  refute_contains "$output" "Install it now?"
+  assert_calls_contain "brew install rtk"
 }
