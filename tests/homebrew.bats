@@ -34,6 +34,14 @@ setup() {
   assert_contains "$output" "Homebrew is required for dependencies. Install it now? [y/N]"
 }
 
+@test "the homebrew prompt is asked at most once per run" {
+  run_install_stdin n --all
+  [ "$status" -eq 0 ]
+  [ "$(grep -c 'Install it now?' <<<"$output")" -eq 1 ]
+  assert_symlink "$FAKE_HOME/.wezterm.lua" "$REPO_ROOT/wezterm/wezterm.lua"
+  assert_symlink "$FAKE_HOME/.zshrc" "$REPO_ROOT/zsh/zshrc"
+}
+
 @test "an existing brew prefix is discovered and activated" {
   make_brew_prefix
   run_install claude

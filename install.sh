@@ -6,6 +6,7 @@ VERSION="1.0.0"
 ALL=0
 DRY_RUN=0
 ASSUME_YES=0
+BREW_DECLINED=0
 SKIP_DEPS="${SETUP_SKIP_DEPS:-0}"
 BREW_PREFIXES="${SETUP_BREW_PREFIXES:-/opt/homebrew /usr/local}"
 SELECTED=""
@@ -154,6 +155,7 @@ activate_brew_prefix() {
 
 ensure_homebrew() {
   deps_enabled || return 1
+  [ "$BREW_DECLINED" = "1" ] && return 1
   command -v brew >/dev/null 2>&1 && return 0
   activate_brew_prefix && return 0
   if dry_run; then
@@ -176,6 +178,7 @@ ensure_homebrew() {
       die "Homebrew installation did not complete"
       ;;
     *)
+      BREW_DECLINED=1
       warn "skipping dependency installation (Homebrew unavailable)"
       return 1
       ;;
