@@ -2,8 +2,16 @@
 set -euo pipefail
 
 REPO_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-MODULES="claude wezterm zsh"
 SELECTED=""
+
+MODULE_TABLE='claude|Claude Code config (CLAUDE.md, settings, statusline, hooks) + rtk, jq
+wezterm|WezTerm config + app and Nerd Fonts
+zsh|Oh My Zsh, powerlevel10k, plugins, fzf/eza/bat/zoxide + zsh dotfiles'
+
+MODULES=()
+while IFS='|' read -r module_name _; do
+  MODULES+=("$module_name")
+done <<<"$MODULE_TABLE"
 
 BLUE=$'\033[1;34m'
 GREEN=$'\033[0;32m'
@@ -18,18 +26,28 @@ warn() { printf '%s %s\n' "${YELLOW}  !${RESET}" "$*"; }
 die()  { printf '%s %s\n' "${RED}error:${RESET}" "$*" >&2; exit 1; }
 
 describe_module() {
-  case "$1" in
-    claude)  printf '%s' "Claude Code config (CLAUDE.md, settings, statusline, hooks) + rtk, jq" ;;
-    wezterm) printf '%s' "WezTerm config + app and Nerd Fonts" ;;
-    zsh)     printf '%s' "Oh My Zsh, powerlevel10k, plugins, fzf/eza/bat/zoxide + zsh dotfiles" ;;
-  esac
+  local name desc
+  while IFS='|' read -r name desc; do
+    if [ "$name" = "$1" ]; then
+      printf '%s' "$desc"
+      return 0
+    fi
+  done <<<"$MODULE_TABLE"
+  return 1
+}
+
+known_module() {
+  local m
+  for m in "${MODULES[@]}"; do
+    if [ "$m" = "$1" ]; then
+      return 0
+    fi
+  done
+  return 1
 }
 
 list_modules() {
-  local m
-  for m in $MODULES; do
-    printf '%s\n' "$m"
-  done
+  printf '%s\n' "${MODULES[@]}"
 }
 
 usage() {
@@ -39,7 +57,7 @@ Usage: ./install.sh [module ...]
 Modules:
 EOF
   local m
-  for m in $MODULES; do
+  for m in "${MODULES[@]}"; do
     printf '  %-9s %s\n' "$m" "$(describe_module "$m")"
   done
   cat <<EOF
@@ -216,7 +234,7 @@ install_zsh() {
 
 module_by_index() {
   local i=1 m
-  for m in $MODULES; do
+  for m in "${MODULES[@]}"; do
     if [ "$i" = "$1" ]; then
       printf '%s' "$m"
       return 0
@@ -230,11 +248,11 @@ resolve_token() {
   local token="$1" m
   case "$token" in
     a|all|--all)
-      printf '%s' "$MODULES"
+      printf '%s' "${MODULES[*]}"
       return 0
       ;;
   esac
-  for m in $MODULES; do
+  for m in "${MODULES[@]}"; do
     if [ "$token" = "$m" ]; then
       printf '%s' "$m"
       return 0
@@ -275,21 +293,23 @@ parse_selection() {
 interactive_select() {
   printf '%s\n\n' "${BOLD}icaro-personal-computer-setup${RESET}"
   local i=1 m
-  for m in $MODULES; do
+  for m in "${MODULES[@]}"; do
     printf '  %s) %-9s %s\n' "$i" "$m" "$(describe_module "$m")"
     i=$((i + 1))
   done
   printf '  a) all\n  q) quit\n\n'
-  local selection
+  local selection tokens
   while true; do
     printf 'Select modules to install (e.g. "1 3", "zsh", "a"): '
     selection=""
     read -r selection || exit 0
     selection="${selection//,/ }"
-    case "$selection" in
-      "") continue ;;
-    esac
-    if parse_selection $selection; then
+    tokens=()
+    read -ra tokens <<<"$selection"
+    if [ "${#tokens[@]}" -eq 0 ]; then
+      continue
+    fi
+    if parse_selection "${tokens[@]}"; then
       return 0
     fi
   done
@@ -302,9 +322,12 @@ main() {
     parse_selection "$@" || die "run ./install.sh --list to see available modules"
   fi
   local m
-  for m in $MODULES; do
+  for m in "${MODULES[@]}"; do
     case " $SELECTED " in
-      *" $m "*) "install_$m" ;;
+      *" $m "*)
+        type "install_$m" >/dev/null 2>&1 || die "missing install_$m"
+        "install_$m"
+        ;;
     esac
   done
   printf '\n'
