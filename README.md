@@ -1,45 +1,22 @@
 # Icaro's PC Setup
 
-Main goals:
-1. Everything needed to rebuild my macOS machine.
-2. Configuration files live in this repo
-3. An interactive installer symlinks them into place and installs the tools they depend on.
+[![CI](https://img.shields.io/github/actions/workflow/status/icarogtavares/icaro-personal-computer-setup/ci.yml?branch=main&label=ci)](https://github.com/icarogtavares/icaro-personal-computer-setup/actions/workflows/ci.yml)
+![Platform](https://img.shields.io/badge/platform-macOS-blue)
+[![License](https://img.shields.io/github/license/icarogtavares/icaro-personal-computer-setup)](LICENSE)
 
-Configs are grouped in topic modules and placed as **symlinks**, so this repo stays the single source of truth: edit any config where it lives, see the change with `git diff`, commit, push.
+Everything needed to rebuild my macOS machine. Configuration files live in this repo, grouped in topic modules; an interactive installer symlinks them into place and installs the tools they depend on. Because the live configs are symlinks, the repo stays the single source of truth — edit any config where it lives, see the change with `git diff`, commit, push.
 
-## Layout
-
-```
-├── install.sh           interactive installer
-├── claude/              Claude Code → ~/.claude/*
-│   ├── CLAUDE.md
-│   ├── settings.json
-│   ├── statusline.sh
-│   └── hooks/notify.sh
-├── wezterm/
-│   └── wezterm.lua      → ~/.wezterm.lua
-└── zsh/
-    ├── zshrc            → ~/.zshrc
-    ├── zprofile         → ~/.zprofile
-    └── p10k.zsh         → ~/.p10k.zsh
-```
-
-## Requirements
-
-- macOS
-- git (`xcode-select --install`)
-
-Everything else — including Homebrew — is detected and offered by the installer when missing.
-
-## Install
+## Quick start
 
 ```bash
-git clone git@github.com:icarogtavares/icaro-personal-computer-setup.git
+git clone https://github.com/icarogtavares/icaro-personal-computer-setup.git
 cd icaro-personal-computer-setup
 ./install.sh
 ```
 
-Running it without arguments opens a checkbox menu — move the pointer with ↑/↓ and toggle with space (or the number keys), then press enter:
+Requirements: macOS and git (`xcode-select --install`). Everything else — including Homebrew — is detected and offered by the installer when missing.
+
+Running without arguments opens a checkbox menu — move with ↑/↓, toggle with space (or the number keys), then press enter:
 
 ```
 icaro-personal-computer-setup
@@ -51,7 +28,16 @@ icaro-personal-computer-setup
   ↑↓ move · space/1-3 toggle · a all · n none · enter install · q quit
 ```
 
-Non-interactive:
+Keep the clone in a permanent location — the live configs are symlinks into it.
+
+## Safe to run
+
+- **Nothing on the machine is ever deleted.** A real file in a symlink's place is renamed next to it: `~/.zshrc` → `~/.zshrc-backup` (timestamped when a backup already exists). To restore an original: delete the symlink, rename the backup back.
+- **Idempotent** — run it as many times as you want; anything already installed or already linked is skipped.
+- **`--dry-run`** previews every action without changing anything.
+- **60+ tests** run the installer against a throwaway `$HOME` with a stripped `PATH` and stub `brew`/`curl`/`git` — nothing on the machine is touched and no network is used; the menu is driven through a real pty. CI runs the suite on macOS (stock bash 3.2) and Ubuntu for every push and pull request.
+
+## Usage
 
 ```bash
 ./install.sh --all               # everything
@@ -63,11 +49,14 @@ Non-interactive:
 ./install.sh --help              # all options
 ```
 
-`SETUP_SKIP_DEPS=1` is equivalent to `--skip-deps`, and `NO_COLOR` disables colored output. `SETUP_BREW_PREFIXES` and `SETUP_WEZTERM_APP` override where the installer looks for an existing Homebrew prefix and the WezTerm app bundle — the defaults suit normal Macs; the test suite points them at its sandbox.
+Environment variables:
 
-The installer is idempotent — run it as many times as you want; anything already installed or already linked is skipped.
+- `SETUP_SKIP_DEPS=1` — same as `--skip-deps`
+- `NO_COLOR` — disable colored output
+- `SETUP_BREW_PREFIXES` — Homebrew prefixes to probe (default: `/opt/homebrew /usr/local`)
+- `SETUP_WEZTERM_APP` — WezTerm app bundle path (default: `/Applications/WezTerm.app`)
 
-Because configs are symlinks into this repo, keep the clone in a permanent location.
+The last two default to what normal Macs use; the test suite points them at its sandbox.
 
 ## Modules
 
@@ -79,22 +68,7 @@ Because configs are symlinks into this repo, keep the clone in a permanent locat
 
 Only individual files are linked into `~/.claude/` — the rest of that directory is machine state (projects, history, caches) and stays out of git.
 
-## Backup Strategy: NOTHING IN YOUR MACHINE IS EVER DELETED
-
-When a real file already exists where a symlink should go, it's renamed in place:
-
-```
-~/.zshrc  →  ~/.zshrc-backup
-~/.zshrc  →  ~/.zshrc-backup-20260712153000   (when a backup already exists)
-```
-
-To restore an original: delete the symlink, rename the backup back.
-
-## Machine-local overrides
-
-`~/.zshrc` sources `~/.zshrc.local` when it exists. Put machine-specific exports and secrets there — that file is never tracked by this repo.
-
-## Updating configs
+## Everyday use
 
 The live files are symlinks, so edit them wherever is convenient (`code ~/.zshrc` or in the repo) — either way the repo sees the change:
 
@@ -103,17 +77,18 @@ git diff
 git add -p && git commit
 ```
 
-One exception: Claude Code sometimes rewrites `settings.json` (e.g. through `/config`), which can replace the symlink with a regular file. Re-run `./install.sh claude` — the rewritten file is kept as `settings.json-backup`, the link is restored, and you can diff the backup against the repo copy to decide what to keep.
+- **Machine-local overrides:** `~/.zshrc` sources `~/.zshrc.local` when it exists. Put machine-specific exports and secrets there — that file is never tracked by this repo.
+- **Claude settings caveat:** Claude Code sometimes rewrites `settings.json` (e.g. through `/config`), which can replace the symlink with a regular file. Re-run `./install.sh claude` — the rewritten file is kept as `settings.json-backup`, the link is restored, and you can diff the backup against the repo copy to decide what to keep.
 
-## Adding a new module
+## Development
+
+Adding a module:
 
 1. Create a directory with the config files (non-hidden names).
 2. Add a `name|description` line to `MODULE_TABLE` in `install.sh`.
 3. Write an `install_<name>` function: dependency checks first, then `link_file "$REPO_DIR/<module>/<file>" "$HOME/<dotfile>"` calls.
 
-Run `./tests/run` before committing and add tests for the new module's links.
-
-## Testing
+Run the suite before committing and add tests for the new module's links:
 
 ```bash
 ./tests/run                       # lint (bash -n + shellcheck + shfmt) and full suite
@@ -121,14 +96,14 @@ Run `./tests/run` before committing and add tests for the new module's links.
 ./tests/run test --filter menu    # subset of tests
 ```
 
-Every test runs `install.sh` against a throwaway `$HOME` with a stripped `PATH` and stub `brew`/`curl`/`git` executables that only record their arguments — nothing on the machine is touched and no network is used. The interactive menu is driven through a real pty with `expect`.
-
-Linting covers `install.sh`, the test harness and the `claude/` scripts (`statusline.sh`, `hooks/notify.sh`); formatting is enforced with `shfmt -i 2 -ci`.
-
-The first run clones [bats-core](https://github.com/bats-core/bats-core) into the gitignored `tests/.deps/` (cached in CI). CI runs the same suite on macOS (stock bash 3.2) and Ubuntu for every push and pull request; the Homebrew tests probe a sandbox prefix through `SETUP_BREW_PREFIXES`, so they run everywhere — including Macs with a real Homebrew install.
+The first run clones [bats-core](https://github.com/bats-core/bats-core) into the gitignored `tests/.deps/` (cached in CI). Formatting is enforced with `shfmt -i 2 -ci` across `install.sh`, the test harness and the `claude/` scripts.
 
 ## After installing
 
 - Open a new terminal (or WezTerm) so zsh loads the linked configs.
 - Run `claude` and log in on first use.
 - If prompt glyphs look wrong, run `p10k configure` once.
+
+## License
+
+[MIT](LICENSE)
