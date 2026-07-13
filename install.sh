@@ -5,6 +5,8 @@ REPO_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 VERSION="1.0.0"
 ALL=0
 DRY_RUN=0
+ASSUME_YES=0
+SKIP_DEPS="${SETUP_SKIP_DEPS:-0}"
 SELECTED=""
 
 MODULE_TABLE='claude|Claude Code config (CLAUDE.md, settings, statusline, hooks) + rtk, jq
@@ -75,11 +77,13 @@ Options:
   -a, --all        Install all modules
   -l, --list       List available modules
   -n, --dry-run    Preview without changing anything
+  -y, --yes        Assume yes; never prompt
+      --skip-deps  Skip Homebrew/dependency installs
   -V, --version    Print version
   -h, --help       Show this help
 
 Environment:
-  SETUP_SKIP_DEPS=1  Only link config files, skip dependency installation
+  SETUP_SKIP_DEPS=1  Same as --skip-deps
 
 Existing files are never deleted: they are renamed to <name>-backup,
 or <name>-backup-<timestamp> when a backup already exists.
@@ -88,7 +92,7 @@ Run with no arguments in a terminal for an interactive menu.
 EOF
 }
 
-deps_enabled() { [ "${SETUP_SKIP_DEPS:-0}" != "1" ]; }
+deps_enabled() { [ "$SKIP_DEPS" != "1" ]; }
 dry_run() { [ "$DRY_RUN" = "1" ]; }
 
 backup_existing() {
@@ -138,9 +142,13 @@ ensure_homebrew() {
     info "would install Homebrew"
     return 0
   fi
-  printf 'Homebrew is required for dependencies. Install it now? [y/N] '
   local answer=""
-  read -r answer || true
+  if [ "$ASSUME_YES" = "1" ]; then
+    answer=y
+  else
+    printf 'Homebrew is required for dependencies. Install it now? [y/N] '
+    read -r answer || true
+  fi
   case "$answer" in
     y|Y|yes|YES)
       local brew_installer
@@ -279,6 +287,8 @@ parse_args() {
       -a|--all) ALL=1 ;;
       -l|--list) list_modules; exit 0 ;;
       -n|--dry-run) DRY_RUN=1 ;;
+      -y|--yes) ASSUME_YES=1 ;;
+      --skip-deps) SKIP_DEPS=1 ;;
       -V|--version) printf 'install.sh %s\n' "$VERSION"; exit 0 ;;
       -h|--help) usage; exit 0 ;;
       --) no_more_flags=1 ;;
@@ -339,7 +349,9 @@ main() {
     SELECTED="${MODULES[*]}"
   fi
   if [ -z "${SELECTED// /}" ]; then
-    if [ -t 0 ] && [ -t 1 ]; then
+    if [ "$ASSUME_YES" = "1" ]; then
+      usage_error "no modules specified (--yes disables the interactive menu); try --all"
+    elif [ -t 0 ] && [ -t 1 ]; then
       interactive_select
     else
       usage_error "no modules specified and no interactive terminal; try --all"
