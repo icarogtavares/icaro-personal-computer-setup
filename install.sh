@@ -4,6 +4,7 @@ set -euo pipefail
 REPO_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 VERSION="1.0.0"
 ALL=0
+DRY_RUN=0
 SELECTED=""
 
 MODULE_TABLE='claude|Claude Code config (CLAUDE.md, settings, statusline, hooks) + rtk, jq
@@ -73,6 +74,7 @@ EOF
 Options:
   -a, --all        Install all modules
   -l, --list       List available modules
+  -n, --dry-run    Preview without changing anything
   -V, --version    Print version
   -h, --help       Show this help
 
@@ -87,11 +89,16 @@ EOF
 }
 
 deps_enabled() { [ "${SETUP_SKIP_DEPS:-0}" != "1" ]; }
+dry_run() { [ "$DRY_RUN" = "1" ]; }
 
 backup_existing() {
   local target="$1" backup="$1-backup"
   if [ -e "$backup" ] || [ -L "$backup" ]; then
     backup="$backup-$(date +%Y%m%d%H%M%S)"
+  fi
+  if dry_run; then
+    warn "would keep existing $target as $backup"
+    return 0
   fi
   mv "$target" "$backup"
   warn "kept existing $target as $backup"
@@ -108,6 +115,10 @@ link_file() {
   elif [ -e "$dst" ]; then
     backup_existing "$dst"
   fi
+  if dry_run; then
+    info "would link $dst -> $src"
+    return 0
+  fi
   mkdir -p "$(dirname "$dst")"
   ln -s "$src" "$dst"
   ok "linked $dst -> $src"
@@ -123,6 +134,10 @@ ensure_homebrew() {
       return 0
     fi
   done
+  if dry_run; then
+    info "would install Homebrew"
+    return 0
+  fi
   printf 'Homebrew is required for dependencies. Install it now? [y/N] '
   local answer=""
   read -r answer || true
@@ -147,8 +162,10 @@ ensure_homebrew() {
 }
 
 ensure_formula() {
-  if brew list --formula "$1" >/dev/null 2>&1; then
+  if command -v brew >/dev/null 2>&1 && brew list --formula "$1" >/dev/null 2>&1; then
     ok "$1 already installed"
+  elif dry_run; then
+    info "would install $1"
   else
     info "installing $1"
     brew install "$1"
@@ -156,8 +173,10 @@ ensure_formula() {
 }
 
 ensure_cask() {
-  if brew list --cask "$1" >/dev/null 2>&1; then
+  if command -v brew >/dev/null 2>&1 && brew list --cask "$1" >/dev/null 2>&1; then
     ok "$1 already installed"
+  elif dry_run; then
+    info "would install $1"
   else
     info "installing $1"
     brew install --cask "$1"
@@ -168,6 +187,8 @@ ensure_clone() {
   local url="$1" dir="$2"
   if [ -d "$dir" ]; then
     ok "$(basename "$dir") already present"
+  elif dry_run; then
+    info "would clone $(basename "$dir")"
   else
     info "cloning $(basename "$dir")"
     git clone --depth=1 "$url" "$dir"
@@ -183,6 +204,8 @@ install_claude() {
   if deps_enabled; then
     if command -v claude >/dev/null 2>&1; then
       ok "Claude Code already installed"
+    elif dry_run; then
+      info "would install Claude Code"
     else
       info "installing Claude Code"
       curl -fsSL https://claude.ai/install.sh | bash
@@ -217,6 +240,8 @@ install_zsh() {
   if deps_enabled; then
     if [ -d "$HOME/.oh-my-zsh" ]; then
       ok "Oh My Zsh already installed"
+    elif dry_run; then
+      info "would install Oh My Zsh"
     else
       info "installing Oh My Zsh"
       local omz_installer
@@ -253,6 +278,7 @@ parse_args() {
     case "$1" in
       -a|--all) ALL=1 ;;
       -l|--list) list_modules; exit 0 ;;
+      -n|--dry-run) DRY_RUN=1 ;;
       -V|--version) printf 'install.sh %s\n' "$VERSION"; exit 0 ;;
       -h|--help) usage; exit 0 ;;
       --) no_more_flags=1 ;;
@@ -319,6 +345,9 @@ main() {
       usage_error "no modules specified and no interactive terminal; try --all"
     fi
   fi
+  if dry_run; then
+    info "dry run: no changes will be made"
+  fi
   local m
   for m in "${MODULES[@]}"; do
     case " $SELECTED " in
@@ -329,8 +358,12 @@ main() {
     esac
   done
   printf '\n'
-  info "done"
-  warn "open a new terminal so the linked configs are loaded"
+  if dry_run; then
+    info "dry run complete: nothing was changed"
+  else
+    info "done"
+    warn "open a new terminal so the linked configs are loaded"
+  fi
 }
 
 main "$@"
