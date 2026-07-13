@@ -1,0 +1,32 @@
+#!/usr/bin/expect -f
+
+set timeout 15
+set repo [lindex $argv 0]
+set fakehome [lindex $argv 1]
+set stubbin [lindex $argv 2]
+set keys [lrange $argv 3 end]
+
+spawn env -i HOME=$fakehome PATH=$stubbin:/usr/bin:/bin TERM=xterm NO_COLOR=1 /bin/bash $repo/install.sh --skip-deps
+
+expect {
+    "enter install" {}
+    timeout { exit 99 }
+    eof { exit 98 }
+}
+
+foreach key $keys {
+    after 100
+    switch -- $key {
+        ENTER { send "\r" }
+        CTRL_C { send "\003" }
+        default { send -- $key }
+    }
+}
+
+expect {
+    eof {}
+    timeout { exit 99 }
+}
+
+catch wait result
+exit [lindex $result 3]
