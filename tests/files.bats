@@ -8,7 +8,7 @@ setup() {
 @test "zsh module writes the zsh dotfiles" {
   run_install --skip-deps zsh
   [ "$status" -eq 0 ]
-  assert_file_equals "$FAKE_HOME/.zshrc" "$REPO_ROOT/modules/zsh/zshrc"
+  assert_file_equals "$FAKE_HOME/.zshrc" "$(rendered_zshrc_template)"
   assert_file_equals "$FAKE_HOME/.zprofile" "$REPO_ROOT/modules/zsh/zprofile"
   assert_file_equals "$FAKE_HOME/.p10k.zsh" "$REPO_ROOT/modules/zsh/p10k.zsh"
 }
@@ -44,7 +44,7 @@ setup() {
   assert_file_equals "$FAKE_HOME/.claude/statusline.sh" "$REPO_ROOT/modules/claude/statusline.sh"
   assert_file_equals "$FAKE_HOME/.claude/hooks/notify.sh" "$REPO_ROOT/modules/claude/hooks/notify.sh"
   assert_file_equals "$FAKE_HOME/.wezterm.lua" "$REPO_ROOT/modules/wezterm/wezterm.lua"
-  assert_file_equals "$FAKE_HOME/.zshrc" "$REPO_ROOT/modules/zsh/zshrc"
+  assert_file_equals "$FAKE_HOME/.zshrc" "$(rendered_zshrc_template)"
   assert_file_equals "$FAKE_HOME/.zprofile" "$REPO_ROOT/modules/zsh/zprofile"
   assert_file_equals "$FAKE_HOME/.p10k.zsh" "$REPO_ROOT/modules/zsh/p10k.zsh"
 }
@@ -65,7 +65,7 @@ setup() {
   run_install --skip-deps zsh
   [ "$status" -eq 0 ]
   assert_contains "$output" "kept existing $FAKE_HOME/.zshrc as $FAKE_HOME/.zshrc-backup"
-  assert_file_equals "$FAKE_HOME/.zshrc" "$REPO_ROOT/modules/zsh/zshrc"
+  assert_file_equals "$FAKE_HOME/.zshrc" "$(rendered_zshrc_template)"
   [ "$(cat "$FAKE_HOME/.zshrc-backup")" = "mine" ]
 }
 
@@ -88,7 +88,7 @@ setup() {
   stamped="$(compgen -G "$FAKE_HOME/.zshrc-backup-2*")"
   [ -n "$stamped" ]
   [ "$(cat "$stamped")" = "second" ]
-  assert_file_equals "$FAKE_HOME/.zshrc" "$REPO_ROOT/modules/zsh/zshrc"
+  assert_file_equals "$FAKE_HOME/.zshrc" "$(rendered_zshrc_template)"
 }
 
 @test "a symlink pointing elsewhere is backed up and replaced" {
@@ -96,7 +96,7 @@ setup() {
   ln -s "$FAKE_HOME/other-zshrc" "$FAKE_HOME/.zshrc"
   run_install --skip-deps zsh
   [ "$status" -eq 0 ]
-  assert_file_equals "$FAKE_HOME/.zshrc" "$REPO_ROOT/modules/zsh/zshrc"
+  assert_file_equals "$FAKE_HOME/.zshrc" "$(rendered_zshrc_template)"
   assert_symlink "$FAKE_HOME/.zshrc-backup" "$FAKE_HOME/other-zshrc"
 }
 

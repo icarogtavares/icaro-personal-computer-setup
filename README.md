@@ -4,7 +4,7 @@
 ![Platform](https://img.shields.io/badge/platform-macOS-blue)
 [![License](https://img.shields.io/github/license/icarogtavares/icaro-personal-computer-setup)](LICENSE)
 
-Everything needed to rebuild my macOS machine. Configuration files live in this repo, grouped in topic modules under `modules/`; an interactive installer writes them into `$HOME` as real files — never symlinks — and installs the tools they depend on. Each module is split into components so a machine can take only what it needs: `~/.claude/settings.json` is composed from the fragments of the selected claude components, and `~/.zshrc` is rendered from the repo template with unselected Oh My Zsh plugins removed. The repo stays the single source of truth: edit under `modules/`, re-run the installer to apply.
+Everything needed to rebuild my macOS machine. Configuration files live in this repo, grouped in topic modules under `modules/`; an interactive installer writes them into `$HOME` as real files — never symlinks — and installs the tools they depend on. Each module is split into components so a machine can take only what it needs: `~/.claude/settings.json` is composed from the fragments of the selected claude components, and `~/.zshrc` is rendered from the repo template with unselected Oh My Zsh plugins and shell-tool sections removed. The repo stays the single source of truth: edit under `modules/`, re-run the installer to apply.
 
 ## Quick start
 
@@ -25,12 +25,16 @@ icaro-personal-computer-setup
   [x] 2. claude-statusline       statusline script + statusLine setting
   [ ] 3. claude-notify           notification hooks + notify preferences
   [ ] 4. wezterm                 WezTerm config + app and Nerd Fonts
-  [x] 5. zsh-core                Oh My Zsh, p10k, shell tools + zsh dotfiles
+  [x] 5. zsh-core                Oh My Zsh, p10k + zsh dotfiles
   [x] 6. zsh-git                 git plugin (Oh My Zsh built-in)
   [x] 7. zsh-autosuggestions     zsh-autosuggestions plugin
   [ ] 8. zsh-syntax-highlighting zsh-syntax-highlighting plugin
+  [x] 9. zoxide                  zoxide (smarter cd) + zshrc init
+  [x] 10. eza                    eza (modern ls) + aliases
+  [ ] 11. fzf                    fzf (fuzzy finder) + key bindings
+  [ ] 12. bat                    bat (better cat) + theme
 
-  ↑↓ move · space/1-8 toggle · a all · n none · enter install · q quit
+  ↑↓ move · space/1-9 toggle · a all · n none · enter install · q quit
 ```
 
 ## Safe to run
@@ -54,7 +58,7 @@ icaro-personal-computer-setup
 ./install.sh --help                         # all options
 ```
 
-A bare module name (`claude`, `wezterm`, `zsh`) selects every component of that module. Selecting a zsh plugin without `zsh-core` adds `zsh-core` automatically — plugins can't work without Oh My Zsh and the dotfiles.
+A bare module name (`claude`, `wezterm`, `zsh`) selects every component of that module. Selecting a zsh plugin or shell tool without `zsh-core` adds `zsh-core` automatically — their setup lives in the rendered `~/.zshrc`.
 
 Environment variables:
 
@@ -85,12 +89,16 @@ icaro-personal-computer-setup/
 | `claude-statusline` | `~/.claude/statusline.sh`; the `statusLine` key | `jq` |
 | `claude-notify` | `~/.claude/hooks/notify.sh`; the `hooks` + notification keys | `jq` |
 | `wezterm` | `~/.wezterm.lua` | [WezTerm](https://wezterm.org), MesloLGS / Hack / Symbols Nerd Fonts |
-| `zsh-core` | `~/.zshrc` (rendered), `~/.zprofile`, `~/.p10k.zsh` | [Oh My Zsh](https://ohmyz.sh), [powerlevel10k](https://github.com/romkatv/powerlevel10k), [fzf](https://junegunn.github.io/fzf/), [eza](https://github.com/eza-community/eza), [bat](https://github.com/sharkdp/bat), [zoxide](https://github.com/ajeetdsouza/zoxide) |
+| `zsh-core` | `~/.zshrc` (rendered), `~/.zprofile`, `~/.p10k.zsh` | [Oh My Zsh](https://ohmyz.sh), [powerlevel10k](https://github.com/romkatv/powerlevel10k) |
 | `zsh-git` | its entry in the `plugins=(...)` array of `~/.zshrc` | — (Oh My Zsh built-in) |
 | `zsh-autosuggestions` | its entry in the `plugins=(...)` array of `~/.zshrc` | [zsh-autosuggestions](https://github.com/zsh-users/zsh-autosuggestions) |
 | `zsh-syntax-highlighting` | its entry in the `plugins=(...)` array of `~/.zshrc` | [zsh-syntax-highlighting](https://github.com/zsh-users/zsh-syntax-highlighting) |
+| `zoxide` | its init line in `~/.zshrc` | [zoxide](https://github.com/ajeetdsouza/zoxide) |
+| `eza` | its `ls`/`ll`/`la`/`lt` aliases in `~/.zshrc` | [eza](https://github.com/eza-community/eza) |
+| `fzf` | its key bindings + completion setup in `~/.zshrc` | [fzf](https://junegunn.github.io/fzf/) |
+| `bat` | its theme export in `~/.zshrc` | [bat](https://github.com/sharkdp/bat) |
 
-`~/.claude/settings.json` is composed from the fragments under `modules/claude/settings/` (`base.json`, `statusline.json`, `notify.json`) — only the selected components' keys end up in the file. `~/.zshrc` is rendered from `modules/zsh/zshrc` with unselected plugins stripped from the `plugins=(...)` array. Only individual files are written into `~/.claude/` — the rest of that directory is machine state (projects, history, caches) and stays out of git.
+`~/.claude/settings.json` is composed from the fragments under `modules/claude/settings/` (`base.json`, `statusline.json`, `notify.json`) — only the selected components' keys end up in the file. `~/.zshrc` is rendered from `modules/zsh/zshrc` with unselected plugins stripped from the `plugins=(...)` array and unselected tool sections (fenced by `# >>> <component…>` / `# <<< <component…>` markers in the template) removed — the fzf preview config lists `fzf eza bat`, so it is only rendered when all three are selected. Only individual files are written into `~/.claude/` — the rest of that directory is machine state (projects, history, caches) and stays out of git.
 
 ## Claude in WezTerm
 

@@ -17,10 +17,14 @@ COMPONENT_TABLE='claude-settings|claude|Claude Code CLI + CLAUDE.md + base setti
 claude-statusline|claude|statusline script + statusLine setting
 claude-notify|claude|notification hooks + notify preferences
 wezterm|wezterm|WezTerm config + app and Nerd Fonts
-zsh-core|zsh|Oh My Zsh, p10k, shell tools + zsh dotfiles
+zsh-core|zsh|Oh My Zsh, p10k + zsh dotfiles
 zsh-git|zsh|git plugin (Oh My Zsh built-in)
 zsh-autosuggestions|zsh|zsh-autosuggestions plugin
-zsh-syntax-highlighting|zsh|zsh-syntax-highlighting plugin'
+zsh-syntax-highlighting|zsh|zsh-syntax-highlighting plugin
+zoxide|zsh|zoxide (smarter cd) + zshrc init
+eza|zsh|eza (modern ls) + aliases
+fzf|zsh|fzf (fuzzy finder) + key bindings
+bat|zsh|bat (better cat) + theme'
 
 COMPONENTS=()
 COMPONENT_MODULES=()
@@ -206,7 +210,7 @@ $body"
 }
 
 render_zshrc() {
-  local keep=""
+  local keep="" tool
   if component_selected zsh-git; then
     keep="$keep git"
   fi
@@ -216,7 +220,31 @@ render_zshrc() {
   if component_selected zsh-syntax-highlighting; then
     keep="$keep zsh-syntax-highlighting"
   fi
+  for tool in zoxide eza fzf bat; do
+    if component_selected "$tool"; then
+      keep="$keep $tool"
+    fi
+  done
   awk -v keep="$keep " '
+    /^# >>> / {
+      drop = 0
+      for (i = 3; i <= NF; i++) {
+        if (index(keep, " " $i " ") == 0) drop = 1
+      }
+      next
+    }
+    /^# <<< / {
+      if (drop) {
+        drop = 0
+        eat = 1
+      }
+      next
+    }
+    drop { next }
+    eat {
+      eat = 0
+      if ($0 == "") next
+    }
     inblock && $0 == ")" { inblock = 0 }
     inblock {
       if (index(keep, " " $1 " ") == 0) next
@@ -375,12 +403,12 @@ install_zsh() {
       ensure_clone https://github.com/zsh-users/zsh-syntax-highlighting.git "$custom/plugins/zsh-syntax-highlighting"
     fi
   fi
-  if ensure_homebrew; then
-    ensure_formula fzf
-    ensure_formula eza
-    ensure_formula bat
-    ensure_formula zoxide
-  fi
+  local tool
+  for tool in fzf eza bat zoxide; do
+    if component_selected "$tool" && ensure_homebrew; then
+      ensure_formula "$tool"
+    fi
+  done
   info "[zsh] writing configs"
   write_file "$HOME/.zshrc" "$(render_zshrc)"
   copy_file "$MODULES_DIR/zsh/zprofile" "$HOME/.zprofile"
@@ -433,10 +461,10 @@ module_selected() {
 }
 
 resolve_selection() {
-  local plugin
-  for plugin in zsh-git zsh-autosuggestions zsh-syntax-highlighting; do
-    if component_selected "$plugin" && ! component_selected zsh-core; then
-      info "zsh plugins require zsh-core; selecting it"
+  local component
+  for component in zsh-git zsh-autosuggestions zsh-syntax-highlighting zoxide eza fzf bat; do
+    if component_selected "$component" && ! component_selected zsh-core; then
+      info "$component requires zsh-core; selecting it"
       select_component zsh-core
     fi
   done
@@ -483,7 +511,7 @@ menu_restore() {
 }
 
 menu_draw() {
-  local i mark desc pointer
+  local i mark desc pointer max_key
   if [ "$1" = "1" ]; then
     printf '\033[%dA\033[J' "$((${#COMPONENTS[@]} + 4))"
   fi
@@ -502,7 +530,11 @@ menu_draw() {
     printf '%s[%s] %d. %-23s %s\n' "$pointer" "$mark" "$((i + 1))" "${COMPONENTS[$i]}" "${desc:0:44}"
     i=$((i + 1))
   done
-  printf '\n  ↑↓ move · space/1-%d toggle · a all · n none · enter install · q quit\n' "${#COMPONENTS[@]}"
+  max_key=${#COMPONENTS[@]}
+  if [ "$max_key" -gt 9 ]; then
+    max_key=9
+  fi
+  printf '\n  ↑↓ move · space/1-%d toggle · a all · n none · enter install · q quit\n' "$max_key"
 }
 
 toggle_row() {

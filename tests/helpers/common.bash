@@ -182,6 +182,11 @@ run_menu_color() {
   unset MENU_COLOR
 }
 
+rendered_zshrc_template() {
+  grep -v -e '^# >>> ' -e '^# <<< ' "$REPO_ROOT/modules/zsh/zshrc" >"$STATE_DIR/zshrc.rendered"
+  printf '%s' "$STATE_DIR/zshrc.rendered"
+}
+
 assert_contains() {
   case "$1" in
     *"$2"*)

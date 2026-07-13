@@ -15,7 +15,7 @@ setup() {
   run_install_env SETUP_SKIP_DEPS=1 --all
   [ "$status" -eq 0 ]
   assert_no_calls
-  assert_file_equals "$FAKE_HOME/.zshrc" "$REPO_ROOT/modules/zsh/zshrc"
+  assert_file_equals "$FAKE_HOME/.zshrc" "$(rendered_zshrc_template)"
 }
 
 @test "claude installs jq through brew when missing" {
@@ -98,13 +98,31 @@ setup() {
   refute_calls_contain "ohmyzsh"
 }
 
-@test "zsh installs the shell tooling through brew" {
+@test "the zsh alias installs all four shell tools through brew" {
   run_install zsh
   [ "$status" -eq 0 ]
   assert_calls_contain "brew install fzf"
   assert_calls_contain "brew install eza"
   assert_calls_contain "brew install bat"
   assert_calls_contain "brew install zoxide"
+}
+
+@test "zsh-core alone installs no shell tool through brew" {
+  run_install zsh-core
+  [ "$status" -eq 0 ]
+  refute_calls_contain "brew install fzf"
+  refute_calls_contain "brew install eza"
+  refute_calls_contain "brew install bat"
+  refute_calls_contain "brew install zoxide"
+}
+
+@test "a selected tool installs only its own formula" {
+  run_install eza
+  [ "$status" -eq 0 ]
+  assert_calls_contain "brew install eza"
+  refute_calls_contain "brew install fzf"
+  refute_calls_contain "brew install bat"
+  refute_calls_contain "brew install zoxide"
 }
 
 @test "zsh-core alone skips the plugin clones" {

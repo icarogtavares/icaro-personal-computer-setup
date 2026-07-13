@@ -39,7 +39,7 @@ setup() {
   [ "$status" -eq 0 ]
   [ "$(grep -c 'Install it now?' <<<"$output")" -eq 1 ]
   assert_file_equals "$FAKE_HOME/.wezterm.lua" "$REPO_ROOT/modules/wezterm/wezterm.lua"
-  assert_file_equals "$FAKE_HOME/.zshrc" "$REPO_ROOT/modules/zsh/zshrc"
+  assert_file_equals "$FAKE_HOME/.zshrc" "$(rendered_zshrc_template)"
 }
 
 @test "an existing brew prefix is discovered and activated" {

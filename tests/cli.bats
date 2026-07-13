@@ -32,7 +32,7 @@ setup() {
 @test "--list exits 0 and prints the components in registry order" {
   run_install --list
   [ "$status" -eq 0 ]
-  [ "${#lines[@]}" -eq 8 ]
+  [ "${#lines[@]}" -eq 12 ]
   [ "${lines[0]}" = "claude-settings" ]
   [ "${lines[1]}" = "claude-statusline" ]
   [ "${lines[2]}" = "claude-notify" ]
@@ -41,6 +41,10 @@ setup() {
   [ "${lines[5]}" = "zsh-git" ]
   [ "${lines[6]}" = "zsh-autosuggestions" ]
   [ "${lines[7]}" = "zsh-syntax-highlighting" ]
+  [ "${lines[8]}" = "zoxide" ]
+  [ "${lines[9]}" = "eza" ]
+  [ "${lines[10]}" = "fzf" ]
+  [ "${lines[11]}" = "bat" ]
 }
 
 @test "--list prints nothing on stderr" {
@@ -66,7 +70,7 @@ setup() {
   run_install_stderr vim
   [ "$status" -eq 2 ]
   assert_contains "$output" "unknown component: vim"
-  assert_contains "$output" "claude-settings claude-statusline claude-notify wezterm zsh-core zsh-git zsh-autosuggestions zsh-syntax-highlighting"
+  assert_contains "$output" "claude-settings claude-statusline claude-notify wezterm zsh-core zsh-git zsh-autosuggestions zsh-syntax-highlighting zoxide eza fzf bat"
   assert_contains "$output" "module aliases: claude wezterm zsh"
 }
 
@@ -90,7 +94,7 @@ setup() {
 @test "aliases and components mix and deduplicate" {
   run_install --skip-deps zsh zsh-core wezterm
   [ "$status" -eq 0 ]
-  assert_file_equals "$FAKE_HOME/.zshrc" "$REPO_ROOT/modules/zsh/zshrc"
+  assert_file_equals "$FAKE_HOME/.zshrc" "$(rendered_zshrc_template)"
   assert_file_equals "$FAKE_HOME/.wezterm.lua" "$REPO_ROOT/modules/wezterm/wezterm.lua"
   [ "$(grep -c "wrote $FAKE_HOME/.zshrc" <<<"$output")" -eq 1 ]
 }
@@ -112,7 +116,7 @@ setup() {
 @test "-- treats later arguments as component names" {
   run_install --skip-deps -- zsh
   [ "$status" -eq 0 ]
-  assert_file_equals "$FAKE_HOME/.zshrc" "$REPO_ROOT/modules/zsh/zshrc"
+  assert_file_equals "$FAKE_HOME/.zshrc" "$(rendered_zshrc_template)"
 }
 
 @test "unknown component after -- exits 2" {

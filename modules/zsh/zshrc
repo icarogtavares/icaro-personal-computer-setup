@@ -139,9 +139,12 @@ setopt HIST_REDUCE_BLANKS        # strip superfluous whitespace
 setopt HIST_VERIFY               # expand !! / !$ into the line first, don't run blindly
 setopt HIST_EXPIRE_DUPS_FIRST    # if trimming ever happens, dupes go first
 
+# >>> fzf
 # Set up fzf key bindings and fuzzy completion
 source <(fzf --zsh)
+# <<< fzf
 
+# >>> fzf eza bat
 export FZF_CTRL_T_OPTS="--preview '
   if [ -d {} ]; then
     eza --tree --color=always {} | head -200
@@ -161,17 +164,21 @@ _fzf_comprun() {
     *)            fzf --preview 'bat -n --color=always --line-range :500 {}' "$@" ;;
   esac
 }
+# <<< fzf eza bat
 
-# zoxide
+# >>> zoxide
 eval "$(zoxide init zsh --cmd cd)"
+# <<< zoxide
 
-# eza
+# >>> eza
 alias ls='eza --icons'
 alias ll='eza -l'
 alias la='eza -la'
 alias lt='eza --tree --level=2 --icons'
+# <<< eza
 
-# bat 
+# >>> bat
 export BAT_THEME="Visual Studio Dark+"
+# <<< bat
 
 [ -f ~/.zshrc.local ] && source ~/.zshrc.local
