@@ -138,9 +138,7 @@ link_file() {
   ok "linked $dst -> $src"
 }
 
-ensure_homebrew() {
-  deps_enabled || return 1
-  command -v brew >/dev/null 2>&1 && return 0
+activate_brew_prefix() {
   local prefix
   for prefix in /opt/homebrew /usr/local; do
     if [ -x "$prefix/bin/brew" ]; then
@@ -148,6 +146,13 @@ ensure_homebrew() {
       return 0
     fi
   done
+  return 1
+}
+
+ensure_homebrew() {
+  deps_enabled || return 1
+  command -v brew >/dev/null 2>&1 && return 0
+  activate_brew_prefix && return 0
   if dry_run; then
     info "would install Homebrew"
     return 0
@@ -164,12 +169,7 @@ ensure_homebrew() {
       local brew_installer
       brew_installer="$(curl -fsSL https://raw.githubusercontent.com/Homebrew/install/HEAD/install.sh)"
       /bin/bash -c "$brew_installer"
-      for prefix in /opt/homebrew /usr/local; do
-        if [ -x "$prefix/bin/brew" ]; then
-          eval "$("$prefix/bin/brew" shellenv)"
-          return 0
-        fi
-      done
+      activate_brew_prefix && return 0
       die "Homebrew installation did not complete"
       ;;
     *)
