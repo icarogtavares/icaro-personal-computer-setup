@@ -40,28 +40,31 @@ cd icaro-personal-computer-setup
 ./install.sh
 ```
 
-Running it without arguments opens the menu:
+Running it without arguments opens a checkbox menu — toggle modules with the number keys, then press enter:
 
 ```
 icaro-personal-computer-setup
 
-  1) claude    Claude Code config (CLAUDE.md, settings, statusline, hooks) + rtk, jq
-  2) wezterm   WezTerm config + app and Nerd Fonts
-  3) zsh       Oh My Zsh, powerlevel10k, plugins, fzf/eza/bat/zoxide + zsh dotfiles
-  a) all
-  q) quit
+  [x] 1. claude     Claude Code config (CLAUDE.md, settings, statusline, hoo
+  [ ] 2. wezterm    WezTerm config + app and Nerd Fonts
+  [x] 3. zsh        Oh My Zsh, powerlevel10k, plugins, fzf/eza/bat/zoxide +
 
-Select modules to install (e.g. "1 3", "zsh", "a"):
+  1-3 toggle · a all · n none · enter install · q quit
 ```
 
 Non-interactive:
 
 ```bash
-./install.sh --all                     # everything
-./install.sh zsh wezterm               # specific modules
-./install.sh --list                    # module names
-SETUP_SKIP_DEPS=1 ./install.sh --all   # only link configs, install nothing
+./install.sh --all               # everything
+./install.sh zsh wezterm         # specific modules
+./install.sh --all --dry-run     # preview without changing anything
+./install.sh --all --yes         # unattended: never prompt
+./install.sh --all --skip-deps   # only link configs, install nothing
+./install.sh --list              # module names
+./install.sh --help              # all options
 ```
+
+`SETUP_SKIP_DEPS=1` is equivalent to `--skip-deps`, and `NO_COLOR` disables colored output.
 
 The installer is idempotent — run it as many times as you want; anything already installed or already linked is skipped.
 
@@ -106,8 +109,10 @@ One exception: Claude Code sometimes rewrites `settings.json` (e.g. through `/co
 ## Adding a new module
 
 1. Create a directory with the config files (non-hidden names).
-2. Add the name to `MODULES` and a line to `describe_module` in `install.sh`.
+2. Add a `name|description` line to `MODULE_TABLE` in `install.sh`.
 3. Write an `install_<name>` function: dependency checks first, then `link_file "$REPO_DIR/<module>/<file>" "$HOME/<dotfile>"` calls.
+
+Run `shellcheck install.sh` before committing.
 
 ## After installing
 
