@@ -91,10 +91,12 @@ setup() {
   assert_symlink "$FAKE_HOME/.claude/settings.json-backup" "$REPO_ROOT/modules/claude/settings.json"
 }
 
-@test "the zsh alias renders a zshrc identical to the template" {
+@test "the zsh alias renders the template minus the section markers" {
   run_install --skip-deps zsh
   [ "$status" -eq 0 ]
-  assert_file_equals "$FAKE_HOME/.zshrc" "$REPO_ROOT/modules/zsh/zshrc"
+  assert_file_equals "$FAKE_HOME/.zshrc" "$(rendered_zshrc_template)"
+  refute_contains "$(cat "$FAKE_HOME/.zshrc")" "# >>>"
+  refute_contains "$(cat "$FAKE_HOME/.zshrc")" "# <<<"
 }
 
 @test "zsh-core alone writes an empty plugins block" {
@@ -131,18 +133,20 @@ setup() {
   [ ! -e "$FAKE_HOME/.zshrc-backup" ]
 }
 
-@test "a repo zshrc symlink with identical content becomes a real file" {
-  ln -s "$REPO_ROOT/modules/zsh/zshrc" "$FAKE_HOME/.zshrc"
+@test "a zshrc symlink with identical content becomes a real file" {
+  local rendered
+  rendered="$(rendered_zshrc_template)"
+  ln -s "$rendered" "$FAKE_HOME/.zshrc"
   run_install --skip-deps zsh
   [ "$status" -eq 0 ]
-  assert_file_equals "$FAKE_HOME/.zshrc" "$REPO_ROOT/modules/zsh/zshrc"
-  assert_symlink "$FAKE_HOME/.zshrc-backup" "$REPO_ROOT/modules/zsh/zshrc"
+  assert_file_equals "$FAKE_HOME/.zshrc" "$rendered"
+  assert_symlink "$FAKE_HOME/.zshrc-backup" "$rendered"
 }
 
 @test "a zsh plugin auto-selects zsh-core" {
   run_install --skip-deps zsh-syntax-highlighting
   [ "$status" -eq 0 ]
-  assert_contains "$output" "zsh plugins require zsh-core; selecting it"
+  assert_contains "$output" "zsh-syntax-highlighting requires zsh-core; selecting it"
   assert_line_present "$FAKE_HOME/.zshrc" "  zsh-syntax-highlighting"
   assert_file_equals "$FAKE_HOME/.zprofile" "$REPO_ROOT/modules/zsh/zprofile"
   assert_file_equals "$FAKE_HOME/.p10k.zsh" "$REPO_ROOT/modules/zsh/p10k.zsh"
@@ -151,5 +155,64 @@ setup() {
 @test "explicit zsh-core with a plugin prints no auto-add notice" {
   run_install --skip-deps zsh-core zsh-git
   [ "$status" -eq 0 ]
-  refute_contains "$output" "zsh plugins require zsh-core"
+  refute_contains "$output" "requires zsh-core"
+}
+
+@test "zsh-core alone omits every tool section" {
+  run_install --skip-deps zsh-core
+  [ "$status" -eq 0 ]
+  local zshrc
+  zshrc="$(cat "$FAKE_HOME/.zshrc")"
+  refute_contains "$zshrc" "fzf --zsh"
+  refute_contains "$zshrc" "zoxide init"
+  refute_contains "$zshrc" "alias ls="
+  refute_contains "$zshrc" "BAT_THEME"
+  assert_contains "$zshrc" "source ~/.zshrc.local"
+}
+
+@test "a single tool keeps only its own section" {
+  run_install --skip-deps zsh-core zoxide
+  [ "$status" -eq 0 ]
+  local zshrc
+  zshrc="$(cat "$FAKE_HOME/.zshrc")"
+  assert_line_present "$FAKE_HOME/.zshrc" "eval \"\$(zoxide init zsh --cmd cd)\""
+  refute_contains "$zshrc" "fzf --zsh"
+  refute_contains "$zshrc" "alias ls="
+  refute_contains "$zshrc" "BAT_THEME"
+}
+
+@test "fzf without eza and bat omits the preview config" {
+  run_install --skip-deps zsh-core fzf
+  [ "$status" -eq 0 ]
+  local zshrc
+  zshrc="$(cat "$FAKE_HOME/.zshrc")"
+  assert_contains "$zshrc" "source <(fzf --zsh)"
+  refute_contains "$zshrc" "FZF_CTRL_T_OPTS"
+  refute_contains "$zshrc" "_fzf_comprun"
+}
+
+@test "fzf with eza and bat keeps the preview config" {
+  run_install --skip-deps zsh-core fzf eza bat
+  [ "$status" -eq 0 ]
+  local zshrc
+  zshrc="$(cat "$FAKE_HOME/.zshrc")"
+  assert_contains "$zshrc" "FZF_CTRL_T_OPTS"
+  assert_contains "$zshrc" "_fzf_comprun"
+  assert_line_present "$FAKE_HOME/.zshrc" "alias lt='eza --tree --level=2 --icons'"
+  assert_line_present "$FAKE_HOME/.zshrc" 'export BAT_THEME="Visual Studio Dark+"'
+}
+
+@test "removed tool sections leave no doubled blank lines" {
+  run_install --skip-deps zsh-core fzf
+  [ "$status" -eq 0 ]
+  run awk 'blank && !NF { exit 1 } { blank = !NF }' "$FAKE_HOME/.zshrc"
+  [ "$status" -eq 0 ]
+}
+
+@test "a shell tool auto-selects zsh-core" {
+  run_install --skip-deps fzf
+  [ "$status" -eq 0 ]
+  assert_contains "$output" "fzf requires zsh-core; selecting it"
+  assert_contains "$(cat "$FAKE_HOME/.zshrc")" "source <(fzf --zsh)"
+  assert_file_equals "$FAKE_HOME/.zprofile" "$REPO_ROOT/modules/zsh/zprofile"
 }

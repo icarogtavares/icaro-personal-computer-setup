@@ -17,7 +17,11 @@ setup() {
   assert_contains "$output" "6. zsh-git"
   assert_contains "$output" "7. zsh-autosuggestions"
   assert_contains "$output" "8. zsh-syntax-highlighting"
-  assert_contains "$output" "space/1-8 toggle"
+  assert_contains "$output" "9. zoxide"
+  assert_contains "$output" "10. eza"
+  assert_contains "$output" "11. fzf"
+  assert_contains "$output" "12. bat"
+  assert_contains "$output" "space/1-9 toggle"
   assert_contains "$output" "enter install"
 }
 
@@ -39,7 +43,7 @@ setup() {
   [ "$status" -eq 0 ]
   assert_file_equals "$FAKE_HOME/.claude/CLAUDE.md" "$REPO_ROOT/modules/claude/CLAUDE.md"
   assert_file_equals "$FAKE_HOME/.wezterm.lua" "$REPO_ROOT/modules/wezterm/wezterm.lua"
-  assert_file_equals "$FAKE_HOME/.zshrc" "$REPO_ROOT/modules/zsh/zshrc"
+  assert_file_equals "$FAKE_HOME/.zshrc" "$(rendered_zshrc_template)"
 }
 
 @test "n clears the selection" {
@@ -65,7 +69,7 @@ setup() {
 }
 
 @test "out of range numbers are ignored" {
-  run_menu 9 ENTER
+  run_menu 0 ENTER
   [ "$status" -eq 0 ]
   assert_contains "$output" "nothing selected"
   assert_home_empty
@@ -102,17 +106,17 @@ setup() {
 @test "a menu-selected plugin row auto-adds zsh-core" {
   run_menu 8 ENTER
   [ "$status" -eq 0 ]
-  assert_contains "$output" "zsh plugins require zsh-core; selecting it"
+  assert_contains "$output" "zsh-syntax-highlighting requires zsh-core; selecting it"
   assert_regular_file "$FAKE_HOME/.zshrc"
   assert_line_present "$FAKE_HOME/.zshrc" "  zsh-syntax-highlighting"
   refute_line_present "$FAKE_HOME/.zshrc" "  git"
 }
 
 @test "the cursor clamps at the top and bottom" {
-  run_menu UP SPACE DOWN DOWN DOWN DOWN DOWN DOWN DOWN DOWN DOWN SPACE ENTER
+  run_menu UP SPACE DOWN DOWN DOWN DOWN DOWN DOWN DOWN DOWN DOWN DOWN DOWN DOWN SPACE ENTER
   [ "$status" -eq 0 ]
   assert_file_equals "$FAKE_HOME/.claude/CLAUDE.md" "$REPO_ROOT/modules/claude/CLAUDE.md"
-  assert_line_present "$FAKE_HOME/.zshrc" "  zsh-syntax-highlighting"
+  assert_line_present "$FAKE_HOME/.zshrc" 'export BAT_THEME="Visual Studio Dark+"'
   [ ! -e "$FAKE_HOME/.wezterm.lua" ]
 }
 
