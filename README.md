@@ -112,7 +112,19 @@ One exception: Claude Code sometimes rewrites `settings.json` (e.g. through `/co
 2. Add a `name|description` line to `MODULE_TABLE` in `install.sh`.
 3. Write an `install_<name>` function: dependency checks first, then `link_file "$REPO_DIR/<module>/<file>" "$HOME/<dotfile>"` calls.
 
-Run `shellcheck install.sh` before committing.
+Run `./tests/run` before committing and add tests for the new module's links.
+
+## Testing
+
+```bash
+./tests/run                       # lint (bash -n + shellcheck) and full suite
+./tests/run lint                  # lint only
+./tests/run test --filter menu    # subset of tests
+```
+
+Every test runs `install.sh` against a throwaway `$HOME` with a stripped `PATH` and stub `brew`/`curl`/`git` executables that only record their arguments — nothing on the machine is touched and no network is used. The interactive menu is driven through a real pty with `expect`.
+
+The first run clones [bats-core](https://github.com/bats-core/bats-core) into the gitignored `tests/.deps/`. CI runs the same suite on macOS (stock bash 3.2) and Ubuntu for every push and pull request; the Homebrew-prompt tests only execute where no real Homebrew prefix exists, so they self-skip on Macs and run on the Ubuntu runner.
 
 ## After installing
 

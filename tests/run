@@ -1,0 +1,53 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
+BATS_DIR="$ROOT/tests/.deps/bats-core"
+BATS_TAG="v1.13.0"
+
+ensure_bats() {
+  if [ ! -x "$BATS_DIR/bin/bats" ]; then
+    git clone --depth 1 --branch "$BATS_TAG" https://github.com/bats-core/bats-core.git "$BATS_DIR"
+  fi
+}
+
+lint() {
+  /bin/bash -n "$ROOT/install.sh"
+  /bin/bash -n "$ROOT/tests/run"
+  /bin/bash -n "$ROOT/tests/helpers/common.bash"
+  if command -v shellcheck >/dev/null 2>&1; then
+    shellcheck "$ROOT/install.sh" "$ROOT/tests/run" "$ROOT/tests/helpers/common.bash" "$ROOT"/tests/*.bats
+  elif [ -n "${CI:-}" ]; then
+    printf 'shellcheck is required in CI\n' >&2
+    exit 1
+  else
+    printf 'shellcheck not found; skipping shellcheck lint\n' >&2
+  fi
+}
+
+run_tests() {
+  if ! command -v expect >/dev/null 2>&1; then
+    printf 'expect is required to run the menu tests\n' >&2
+    exit 1
+  fi
+  ensure_bats
+  BATS_TEST_TIMEOUT=90 "$BATS_DIR/bin/bats" --print-output-on-failure "$@" "$ROOT/tests"
+}
+
+case "${1:-all}" in
+  lint)
+    lint
+    ;;
+  test)
+    shift
+    run_tests "$@"
+    ;;
+  all)
+    lint
+    run_tests
+    ;;
+  *)
+    printf 'usage: tests/run [lint|test [bats args]]\n' >&2
+    exit 2
+    ;;
+esac
