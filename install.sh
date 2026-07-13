@@ -38,9 +38,12 @@ else
 fi
 
 info() { printf '%s %s\n' "${BLUE}==>${RESET}" "$*"; }
-ok()   { printf '%s %s\n' "${GREEN}  ✓${RESET}" "$*"; }
+ok() { printf '%s %s\n' "${GREEN}  ✓${RESET}" "$*"; }
 warn() { printf '%s %s\n' "${YELLOW}  !${RESET}" "$*"; }
-die()  { printf '%s %s\n' "${RED}error:${RESET}" "$*" >&2; exit 1; }
+die() {
+  printf '%s %s\n' "${RED}error:${RESET}" "$*" >&2
+  exit 1
+}
 
 usage_error() {
   printf '%s %s\n' "${RED}error:${RESET}" "$*" >&2
@@ -172,7 +175,7 @@ ensure_homebrew() {
     read -r answer || true
   fi
   case "$answer" in
-    y|Y|yes|YES)
+    y | Y | yes | YES)
       local brew_installer
       brew_installer="$(curl -fsSL https://raw.githubusercontent.com/Homebrew/install/HEAD/install.sh)"
       /bin/bash -c "$brew_installer"
@@ -305,13 +308,22 @@ parse_args() {
       continue
     fi
     case "$1" in
-      -a|--all) ALL=1 ;;
-      -l|--list) list_modules; exit 0 ;;
-      -n|--dry-run) DRY_RUN=1 ;;
-      -y|--yes) ASSUME_YES=1 ;;
+      -a | --all) ALL=1 ;;
+      -l | --list)
+        list_modules
+        exit 0
+        ;;
+      -n | --dry-run) DRY_RUN=1 ;;
+      -y | --yes) ASSUME_YES=1 ;;
       --skip-deps) SKIP_DEPS=1 ;;
-      -V|--version) printf 'install.sh %s\n' "$VERSION"; exit 0 ;;
-      -h|--help) usage; exit 0 ;;
+      -V | --version)
+        printf 'install.sh %s\n' "$VERSION"
+        exit 0
+        ;;
+      -h | --help)
+        usage
+        exit 0
+        ;;
       --) no_more_flags=1 ;;
       -*) usage_error "unknown option: $1" ;;
       *)
@@ -402,7 +414,7 @@ interactive_select() {
           toggle_row "$((key - 1))"
         fi
         ;;
-      a|A)
+      a | A)
         i=0
         while [ "$i" -lt "$count" ]; do
           checked[i]=1
@@ -410,7 +422,7 @@ interactive_select() {
         done
         menu_draw 1
         ;;
-      n|N)
+      n | N)
         i=0
         while [ "$i" -lt "$count" ]; do
           checked[i]=0
@@ -418,7 +430,7 @@ interactive_select() {
         done
         menu_draw 1
         ;;
-      q|Q)
+      q | Q)
         menu_restore
         trap - INT TERM
         exit 0
