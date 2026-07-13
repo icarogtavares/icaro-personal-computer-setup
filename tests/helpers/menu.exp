@@ -6,7 +6,10 @@ set fakehome [lindex $argv 1]
 set stubbin [lindex $argv 2]
 set keys [lrange $argv 3 end]
 
-spawn env -i HOME=$fakehome PATH=$stubbin:/usr/bin:/bin TERM=xterm NO_COLOR=1 /bin/bash $repo/install.sh --skip-deps
+set nocolor "NO_COLOR=1"
+if {[info exists env(MENU_COLOR)]} { set nocolor "NO_COLOR=" }
+
+spawn env -i HOME=$fakehome PATH=$stubbin:/usr/bin:/bin TERM=xterm $nocolor /bin/bash $repo/install.sh --skip-deps
 
 expect {
     "enter install" {}
@@ -19,6 +22,11 @@ foreach key $keys {
     switch -- $key {
         ENTER { send "\r" }
         CTRL_C { send "\003" }
+        UP { send "\033\[A" }
+        DOWN { send "\033\[B" }
+        SPACE { send " " }
+        ESC { send "\033" }
+        PAUSE { after 2000 }
         default { send -- $key }
     }
 }

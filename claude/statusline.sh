@@ -52,14 +52,14 @@ measure() {
   local i w
   for ((i = 0; i < $#; i++)); do
     w=$(vlen "${@:$((i + 1)):1}")
-    [ "${widths[$i]:-0}" -lt "$w" ] && widths[$i]=$w
+    [ "${widths[i]:-0}" -lt "$w" ] && widths[i]=$w
   done
 }
 
 join() {
   local out="" i cell w pad last=$(($# - 1))
   for ((i = 0; i < $#; i++)); do
-    cell="${@:$((i + 1)):1}"
+    cell="${*:$((i + 1)):1}"
     if [ "$i" -lt "$last" ]; then
       w=$(vlen "$cell")
       pad=$(( ${widths[$i]:-0} - w ))
@@ -87,7 +87,7 @@ pct_color() {
   else printf '%s' "$C_GREEN"; fi
 }
 
-cd "$DIR" 2>/dev/null
+cd "$DIR" 2>/dev/null || true
 
 # ---------- Line 1: model | effort | thinking | context ----------
 line1=()

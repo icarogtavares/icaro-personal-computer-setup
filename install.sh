@@ -6,7 +6,10 @@ VERSION="1.0.0"
 ALL=0
 DRY_RUN=0
 ASSUME_YES=0
+BREW_DECLINED=0
 SKIP_DEPS="${SETUP_SKIP_DEPS:-0}"
+BREW_PREFIXES="${SETUP_BREW_PREFIXES:-/opt/homebrew /usr/local}"
+WEZTERM_APP="${SETUP_WEZTERM_APP:-/Applications/WezTerm.app}"
 SELECTED=""
 
 MODULE_TABLE='claude|Claude Code config (CLAUDE.md, settings, statusline, hooks) + rtk, jq
@@ -35,9 +38,12 @@ else
 fi
 
 info() { printf '%s %s\n' "${BLUE}==>${RESET}" "$*"; }
-ok()   { printf '%s %s\n' "${GREEN}  ✓${RESET}" "$*"; }
+ok() { printf '%s %s\n' "${GREEN}  ✓${RESET}" "$*"; }
 warn() { printf '%s %s\n' "${YELLOW}  !${RESET}" "$*"; }
-die()  { printf '%s %s\n' "${RED}error:${RESET}" "$*" >&2; exit 1; }
+die() {
+  printf '%s %s\n' "${RED}error:${RESET}" "$*" >&2
+  exit 1
+}
 
 usage_error() {
   printf '%s %s\n' "${RED}error:${RESET}" "$*" >&2
@@ -92,8 +98,10 @@ Options:
   -h, --help       Show this help
 
 Environment:
-  SETUP_SKIP_DEPS=1  Same as --skip-deps
-  NO_COLOR           Disable colored output
+  SETUP_SKIP_DEPS=1     Same as --skip-deps
+  SETUP_BREW_PREFIXES   Homebrew prefixes to probe (default: /opt/homebrew /usr/local)
+  SETUP_WEZTERM_APP     WezTerm app bundle path (default: /Applications/WezTerm.app)
+  NO_COLOR              Disable colored output
 
 Existing files are never deleted: they are renamed to <name>-backup,
 or <name>-backup-<timestamp> when a backup already exists.
@@ -138,16 +146,23 @@ link_file() {
   ok "linked $dst -> $src"
 }
 
-ensure_homebrew() {
-  deps_enabled || return 1
-  command -v brew >/dev/null 2>&1 && return 0
-  local prefix
-  for prefix in /opt/homebrew /usr/local; do
+activate_brew_prefix() {
+  local prefixes prefix
+  read -r -a prefixes <<<"$BREW_PREFIXES"
+  for prefix in ${prefixes[@]+"${prefixes[@]}"}; do
     if [ -x "$prefix/bin/brew" ]; then
       eval "$("$prefix/bin/brew" shellenv)"
       return 0
     fi
   done
+  return 1
+}
+
+ensure_homebrew() {
+  deps_enabled || return 1
+  [ "$BREW_DECLINED" = "1" ] && return 1
+  command -v brew >/dev/null 2>&1 && return 0
+  activate_brew_prefix && return 0
   if dry_run; then
     info "would install Homebrew"
     return 0
@@ -160,46 +175,39 @@ ensure_homebrew() {
     read -r answer || true
   fi
   case "$answer" in
-    y|Y|yes|YES)
+    y | Y | yes | YES)
       local brew_installer
       brew_installer="$(curl -fsSL https://raw.githubusercontent.com/Homebrew/install/HEAD/install.sh)"
       /bin/bash -c "$brew_installer"
-      for prefix in /opt/homebrew /usr/local; do
-        if [ -x "$prefix/bin/brew" ]; then
-          eval "$("$prefix/bin/brew" shellenv)"
-          return 0
-        fi
-      done
+      activate_brew_prefix && return 0
       die "Homebrew installation did not complete"
       ;;
     *)
+      BREW_DECLINED=1
       warn "skipping dependency installation (Homebrew unavailable)"
       return 1
       ;;
   esac
 }
 
-ensure_formula() {
-  if command -v brew >/dev/null 2>&1 && brew list --formula "$1" >/dev/null 2>&1; then
-    ok "$1 already installed"
+ensure_brew_pkg() {
+  local kind="$1" name="$2"
+  if command -v brew >/dev/null 2>&1 && brew list "--$kind" "$name" >/dev/null 2>&1; then
+    ok "$name already installed"
   elif dry_run; then
-    info "would install $1"
+    info "would install $name"
   else
-    info "installing $1"
-    brew install "$1"
+    info "installing $name"
+    if [ "$kind" = "cask" ]; then
+      brew install --cask "$name"
+    else
+      brew install "$name"
+    fi
   fi
 }
 
-ensure_cask() {
-  if command -v brew >/dev/null 2>&1 && brew list --cask "$1" >/dev/null 2>&1; then
-    ok "$1 already installed"
-  elif dry_run; then
-    info "would install $1"
-  else
-    info "installing $1"
-    brew install --cask "$1"
-  fi
-}
+ensure_formula() { ensure_brew_pkg formula "$1"; }
+ensure_cask() { ensure_brew_pkg cask "$1"; }
 
 ensure_clone() {
   local url="$1" dir="$2"
@@ -226,7 +234,9 @@ install_claude() {
       info "would install Claude Code"
     else
       info "installing Claude Code"
-      curl -fsSL https://claude.ai/install.sh | bash
+      local claude_installer
+      claude_installer="$(curl -fsSL https://claude.ai/install.sh)"
+      /bin/bash -c "$claude_installer"
     fi
   fi
   info "[claude] linking configs"
@@ -240,7 +250,7 @@ install_claude() {
 install_wezterm() {
   info "[wezterm] dependencies"
   if ensure_homebrew; then
-    if [ -d "/Applications/WezTerm.app" ]; then
+    if [ -d "$WEZTERM_APP" ]; then
       ok "WezTerm.app already installed"
     else
       ensure_cask wezterm
@@ -284,28 +294,40 @@ install_zsh() {
   link_file "$REPO_DIR/zsh/p10k.zsh" "$HOME/.p10k.zsh"
 }
 
+select_module() {
+  known_module "$1" || usage_error "unknown module: $1 (available: ${MODULES[*]})"
+  SELECTED="$SELECTED $1"
+}
+
 parse_args() {
   local no_more_flags=0
   while [ $# -gt 0 ]; do
     if [ "$no_more_flags" = "1" ]; then
-      known_module "$1" || usage_error "unknown module: $1 (available: ${MODULES[*]})"
-      SELECTED="$SELECTED $1"
+      select_module "$1"
       shift
       continue
     fi
     case "$1" in
-      -a|--all) ALL=1 ;;
-      -l|--list) list_modules; exit 0 ;;
-      -n|--dry-run) DRY_RUN=1 ;;
-      -y|--yes) ASSUME_YES=1 ;;
+      -a | --all) ALL=1 ;;
+      -l | --list)
+        list_modules
+        exit 0
+        ;;
+      -n | --dry-run) DRY_RUN=1 ;;
+      -y | --yes) ASSUME_YES=1 ;;
       --skip-deps) SKIP_DEPS=1 ;;
-      -V|--version) printf 'install.sh %s\n' "$VERSION"; exit 0 ;;
-      -h|--help) usage; exit 0 ;;
+      -V | --version)
+        printf 'install.sh %s\n' "$VERSION"
+        exit 0
+        ;;
+      -h | --help)
+        usage
+        exit 0
+        ;;
       --) no_more_flags=1 ;;
       -*) usage_error "unknown option: $1" ;;
       *)
-        known_module "$1" || usage_error "unknown module: $1 (available: ${MODULES[*]})"
-        SELECTED="$SELECTED $1"
+        select_module "$1"
         ;;
     esac
     shift
@@ -318,7 +340,7 @@ menu_restore() {
 }
 
 menu_draw() {
-  local i mark desc
+  local i mark desc pointer
   if [ "$1" = "1" ]; then
     printf '\033[%dA\033[J' "$((${#MODULES[@]} + 4))"
   fi
@@ -329,16 +351,30 @@ menu_draw() {
     if [ "${checked[i]}" = "1" ]; then
       mark="${GREEN}x${RESET}"
     fi
+    pointer="  "
+    if [ "$i" = "$cursor" ]; then
+      pointer="${BOLD}> ${RESET}"
+    fi
     desc="$(describe_module "${MODULES[$i]}")"
-    printf '  [%s] %d. %-10s %s\n' "$mark" "$((i + 1))" "${MODULES[$i]}" "${desc:0:56}"
+    printf '%s[%s] %d. %-10s %s\n' "$pointer" "$mark" "$((i + 1))" "${MODULES[$i]}" "${desc:0:56}"
     i=$((i + 1))
   done
-  printf '\n  1-%d toggle · a all · n none · enter install · q quit\n' "${#MODULES[@]}"
+  printf '\n  ↑↓ move · space/1-%d toggle · a all · n none · enter install · q quit\n' "${#MODULES[@]}"
+}
+
+toggle_row() {
+  if [ "${checked[$1]}" = "1" ]; then
+    checked[$1]=0
+  else
+    checked[$1]=1
+  fi
+  menu_draw 1
 }
 
 interactive_select() {
-  local checked count i key
+  local checked count i key cursor
   count=${#MODULES[@]}
+  cursor=0
   checked=()
   i=0
   while [ "$i" -lt "$count" ]; do
@@ -350,23 +386,35 @@ interactive_select() {
   menu_draw 0
   while true; do
     key=""
-    read -rsn1 key || key="q"
+    IFS= read -rsn1 key || key="q"
     case "$key" in
       $'\033')
+        key=""
         read -rsn2 -t 1 key || true
+        case "$key" in
+          "[A")
+            if [ "$cursor" -gt 0 ]; then
+              cursor=$((cursor - 1))
+              menu_draw 1
+            fi
+            ;;
+          "[B")
+            if [ "$cursor" -lt "$((count - 1))" ]; then
+              cursor=$((cursor + 1))
+              menu_draw 1
+            fi
+            ;;
+        esac
+        ;;
+      " ")
+        toggle_row "$cursor"
         ;;
       [1-9])
         if [ "$key" -le "$count" ]; then
-          i=$((key - 1))
-          if [ "${checked[i]}" = "1" ]; then
-            checked[i]=0
-          else
-            checked[i]=1
-          fi
-          menu_draw 1
+          toggle_row "$((key - 1))"
         fi
         ;;
-      a|A)
+      a | A)
         i=0
         while [ "$i" -lt "$count" ]; do
           checked[i]=1
@@ -374,7 +422,7 @@ interactive_select() {
         done
         menu_draw 1
         ;;
-      n|N)
+      n | N)
         i=0
         while [ "$i" -lt "$count" ]; do
           checked[i]=0
@@ -382,7 +430,7 @@ interactive_select() {
         done
         menu_draw 1
         ;;
-      q|Q)
+      q | Q)
         menu_restore
         trap - INT TERM
         exit 0

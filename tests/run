@@ -4,6 +4,13 @@ set -euo pipefail
 ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 BATS_DIR="$ROOT/tests/.deps/bats-core"
 BATS_TAG="v1.13.0"
+BASH_SOURCES=(
+  "$ROOT/install.sh"
+  "$ROOT/tests/run"
+  "$ROOT/tests/helpers/common.bash"
+  "$ROOT/claude/statusline.sh"
+  "$ROOT/claude/hooks/notify.sh"
+)
 
 ensure_bats() {
   if [ ! -x "$BATS_DIR/bin/bats" ]; then
@@ -12,16 +19,25 @@ ensure_bats() {
 }
 
 lint() {
-  /bin/bash -n "$ROOT/install.sh"
-  /bin/bash -n "$ROOT/tests/run"
-  /bin/bash -n "$ROOT/tests/helpers/common.bash"
+  local f
+  for f in "${BASH_SOURCES[@]}"; do
+    /bin/bash -n "$f"
+  done
   if command -v shellcheck >/dev/null 2>&1; then
-    shellcheck "$ROOT/install.sh" "$ROOT/tests/run" "$ROOT/tests/helpers/common.bash" "$ROOT"/tests/*.bats
+    shellcheck "${BASH_SOURCES[@]}" "$ROOT"/tests/*.bats
   elif [ -n "${CI:-}" ]; then
     printf 'shellcheck is required in CI\n' >&2
     exit 1
   else
     printf 'shellcheck not found; skipping shellcheck lint\n' >&2
+  fi
+  if command -v shfmt >/dev/null 2>&1; then
+    shfmt -d -i 2 -ci "$ROOT/install.sh" "$ROOT/tests/run" "$ROOT/tests/helpers/common.bash"
+  elif [ -n "${CI:-}" ]; then
+    printf 'shfmt is required in CI\n' >&2
+    exit 1
+  else
+    printf 'shfmt not found; skipping format check\n' >&2
   fi
 }
 

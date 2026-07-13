@@ -24,6 +24,18 @@ setup() {
   assert_contains "$output" "unknown option: --bogus"
 }
 
+@test "a color terminal renders the blue info arrows" {
+  run_menu_color 1 ENTER
+  [ "$status" -eq 0 ]
+  assert_contains "$output" $'\033[1;34m==>\033[0m'
+}
+
+@test "a color terminal renders the checked box in green" {
+  run_menu_color 1 q
+  [ "$status" -eq 0 ]
+  assert_contains "$output" $'\033[0;32mx\033[0m'
+}
+
 @test "--help documents every flag, env var and module" {
   run_install --help
   [ "$status" -eq 0 ]
@@ -35,6 +47,8 @@ setup() {
   assert_contains "$output" "--version"
   assert_contains "$output" "--help"
   assert_contains "$output" "SETUP_SKIP_DEPS"
+  assert_contains "$output" "SETUP_BREW_PREFIXES"
+  assert_contains "$output" "SETUP_WEZTERM_APP"
   assert_contains "$output" "NO_COLOR"
   assert_contains "$output" "claude"
   assert_contains "$output" "wezterm"

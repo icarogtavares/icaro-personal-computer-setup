@@ -40,16 +40,16 @@ cd icaro-personal-computer-setup
 ./install.sh
 ```
 
-Running it without arguments opens a checkbox menu — toggle modules with the number keys, then press enter:
+Running it without arguments opens a checkbox menu — move the pointer with ↑/↓ and toggle with space (or the number keys), then press enter:
 
 ```
 icaro-personal-computer-setup
 
-  [x] 1. claude     Claude Code config (CLAUDE.md, settings, statusline, hoo
+> [x] 1. claude     Claude Code config (CLAUDE.md, settings, statusline, hoo
   [ ] 2. wezterm    WezTerm config + app and Nerd Fonts
   [x] 3. zsh        Oh My Zsh, powerlevel10k, plugins, fzf/eza/bat/zoxide +
 
-  1-3 toggle · a all · n none · enter install · q quit
+  ↑↓ move · space/1-3 toggle · a all · n none · enter install · q quit
 ```
 
 Non-interactive:
@@ -64,7 +64,7 @@ Non-interactive:
 ./install.sh --help              # all options
 ```
 
-`SETUP_SKIP_DEPS=1` is equivalent to `--skip-deps`, and `NO_COLOR` disables colored output.
+`SETUP_SKIP_DEPS=1` is equivalent to `--skip-deps`, and `NO_COLOR` disables colored output. `SETUP_BREW_PREFIXES` and `SETUP_WEZTERM_APP` override where the installer looks for an existing Homebrew prefix and the WezTerm app bundle — the defaults suit normal Macs; the test suite points them at its sandbox.
 
 The installer is idempotent — run it as many times as you want; anything already installed or already linked is skipped.
 
@@ -117,14 +117,16 @@ Run `./tests/run` before committing and add tests for the new module's links.
 ## Testing
 
 ```bash
-./tests/run                       # lint (bash -n + shellcheck) and full suite
+./tests/run                       # lint (bash -n + shellcheck + shfmt) and full suite
 ./tests/run lint                  # lint only
 ./tests/run test --filter menu    # subset of tests
 ```
 
 Every test runs `install.sh` against a throwaway `$HOME` with a stripped `PATH` and stub `brew`/`curl`/`git` executables that only record their arguments — nothing on the machine is touched and no network is used. The interactive menu is driven through a real pty with `expect`.
 
-The first run clones [bats-core](https://github.com/bats-core/bats-core) into the gitignored `tests/.deps/`. CI runs the same suite on macOS (stock bash 3.2) and Ubuntu for every push and pull request; the Homebrew-prompt tests only execute where no real Homebrew prefix exists, so they self-skip on Macs and run on the Ubuntu runner.
+Linting covers `install.sh`, the test harness and the `claude/` scripts (`statusline.sh`, `hooks/notify.sh`); formatting is enforced with `shfmt -i 2 -ci`.
+
+The first run clones [bats-core](https://github.com/bats-core/bats-core) into the gitignored `tests/.deps/` (cached in CI). CI runs the same suite on macOS (stock bash 3.2) and Ubuntu for every push and pull request; the Homebrew tests probe a sandbox prefix through `SETUP_BREW_PREFIXES`, so they run everywhere — including Macs with a real Homebrew install.
 
 ## After installing
 
