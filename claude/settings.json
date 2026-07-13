@@ -5,17 +5,6 @@
   },
   "model": "claude-fable-5[1m]",
   "hooks": {
-    "PreToolUse": [
-      {
-        "matcher": "Bash",
-        "hooks": [
-          {
-            "type": "command",
-            "command": "rtk hook claude"
-          }
-        ]
-      }
-    ],
     "Notification": [
       {
         "hooks": [
