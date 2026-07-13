@@ -2,6 +2,8 @@
 set -euo pipefail
 
 REPO_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+VERSION="1.0.0"
+ALL=0
 SELECTED=""
 
 MODULE_TABLE='claude|Claude Code config (CLAUDE.md, settings, statusline, hooks) + rtk, jq
@@ -24,6 +26,12 @@ info() { printf '%s %s\n' "${BLUE}==>${RESET}" "$*"; }
 ok()   { printf '%s %s\n' "${GREEN}  ✓${RESET}" "$*"; }
 warn() { printf '%s %s\n' "${YELLOW}  !${RESET}" "$*"; }
 die()  { printf '%s %s\n' "${RED}error:${RESET}" "$*" >&2; exit 1; }
+
+usage_error() {
+  printf '%s %s\n' "${RED}error:${RESET}" "$*" >&2
+  printf 'run ./install.sh --help for usage\n' >&2
+  exit 2
+}
 
 describe_module() {
   local name desc
@@ -52,20 +60,21 @@ list_modules() {
 
 usage() {
   cat <<EOF
-Usage: ./install.sh [module ...]
+Usage: ./install.sh [options] [module ...]
 
 Modules:
 EOF
   local m
   for m in "${MODULES[@]}"; do
-    printf '  %-9s %s\n' "$m" "$(describe_module "$m")"
+    printf '  %-10s %s\n' "$m" "$(describe_module "$m")"
   done
   cat <<EOF
 
 Options:
-  --all       Install every module
-  --list      Print available module names
-  -h, --help  Show this help
+  -a, --all        Install all modules
+  -l, --list       List available modules
+  -V, --version    Print version
+  -h, --help       Show this help
 
 Environment:
   SETUP_SKIP_DEPS=1  Only link config files, skip dependency installation
@@ -73,7 +82,7 @@ Environment:
 Existing files are never deleted: they are renamed to <name>-backup,
 or <name>-backup-<timestamp> when a backup already exists.
 
-Run without arguments for an interactive menu.
+Run with no arguments in a terminal for an interactive menu.
 EOF
 }
 
@@ -232,75 +241,41 @@ install_zsh() {
   link_file "$REPO_DIR/zsh/p10k.zsh" "$HOME/.p10k.zsh"
 }
 
-module_by_index() {
-  local i=1 m
-  for m in "${MODULES[@]}"; do
-    if [ "$i" = "$1" ]; then
-      printf '%s' "$m"
-      return 0
+parse_args() {
+  local no_more_flags=0
+  while [ $# -gt 0 ]; do
+    if [ "$no_more_flags" = "1" ]; then
+      known_module "$1" || usage_error "unknown module: $1 (available: ${MODULES[*]})"
+      SELECTED="$SELECTED $1"
+      shift
+      continue
     fi
-    i=$((i + 1))
-  done
-  return 1
-}
-
-resolve_token() {
-  local token="$1" m
-  case "$token" in
-    a|all|--all)
-      printf '%s' "${MODULES[*]}"
-      return 0
-      ;;
-  esac
-  for m in "${MODULES[@]}"; do
-    if [ "$token" = "$m" ]; then
-      printf '%s' "$m"
-      return 0
-    fi
-  done
-  case "$token" in
-    [0-9]|[0-9][0-9]) module_by_index "$token" && return 0 ;;
-  esac
-  return 1
-}
-
-parse_selection() {
-  local token resolved out=""
-  [ $# -gt 0 ] || return 1
-  for token in "$@"; do
-    case "$token" in
-      q|quit|exit) exit 0 ;;
-      -h|--help)
-        usage
-        exit 0
-        ;;
-      --list)
-        list_modules
-        exit 0
+    case "$1" in
+      -a|--all) ALL=1 ;;
+      -l|--list) list_modules; exit 0 ;;
+      -V|--version) printf 'install.sh %s\n' "$VERSION"; exit 0 ;;
+      -h|--help) usage; exit 0 ;;
+      --) no_more_flags=1 ;;
+      -*) usage_error "unknown option: $1" ;;
+      *)
+        known_module "$1" || usage_error "unknown module: $1 (available: ${MODULES[*]})"
+        SELECTED="$SELECTED $1"
         ;;
     esac
-    if resolved="$(resolve_token "$token")"; then
-      out="$out $resolved"
-    else
-      warn "unknown module: $token"
-      return 1
-    fi
+    shift
   done
-  SELECTED="$out"
-  return 0
 }
 
 interactive_select() {
   printf '%s\n\n' "${BOLD}icaro-personal-computer-setup${RESET}"
-  local i=1 m
+  local m
   for m in "${MODULES[@]}"; do
-    printf '  %s) %-9s %s\n' "$i" "$m" "$(describe_module "$m")"
-    i=$((i + 1))
+    printf '  %-10s %s\n' "$m" "$(describe_module "$m")"
   done
-  printf '  a) all\n  q) quit\n\n'
-  local selection tokens
+  printf '\n'
+  local selection tokens token picked
   while true; do
-    printf 'Select modules to install (e.g. "1 3", "zsh", "a"): '
+    printf 'Modules to install ("a" for all, "q" to quit): '
     selection=""
     read -r selection || exit 0
     selection="${selection//,/ }"
@@ -309,17 +284,40 @@ interactive_select() {
     if [ "${#tokens[@]}" -eq 0 ]; then
       continue
     fi
-    if parse_selection "${tokens[@]}"; then
+    picked=""
+    for token in "${tokens[@]}"; do
+      case "$token" in
+        q|quit) exit 0 ;;
+        a|all) picked="${MODULES[*]}" ;;
+        *)
+          if known_module "$token"; then
+            picked="$picked $token"
+          else
+            warn "unknown module: $token"
+            picked=""
+            break
+          fi
+          ;;
+      esac
+    done
+    if [ -n "${picked// /}" ]; then
+      SELECTED="$picked"
       return 0
     fi
   done
 }
 
 main() {
-  if [ $# -eq 0 ]; then
-    interactive_select
-  else
-    parse_selection "$@" || die "run ./install.sh --list to see available modules"
+  parse_args "$@"
+  if [ "$ALL" = "1" ]; then
+    SELECTED="${MODULES[*]}"
+  fi
+  if [ -z "${SELECTED// /}" ]; then
+    if [ -t 0 ] && [ -t 1 ]; then
+      interactive_select
+    else
+      usage_error "no modules specified and no interactive terminal; try --all"
+    fi
   fi
   local m
   for m in "${MODULES[@]}"; do
