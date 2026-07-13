@@ -2,6 +2,7 @@
 
 REPO_ROOT="$(cd "${BATS_TEST_DIRNAME:?}/.." && pwd)"
 INSTALL_SH="$REPO_ROOT/install.sh"
+NOTIFY_SH="$REPO_ROOT/claude/hooks/notify.sh"
 
 sandbox_setup() {
   FAKE_HOME="${BATS_TEST_TMPDIR:?}/home"
@@ -88,6 +89,18 @@ set_brew_list_exit() {
   printf '%s\n' "$1" >"$STATE_DIR/brew.list.exit"
 }
 
+make_wezterm_cli_stub() {
+  cat >"$STUB_BIN/wezterm" <<EOF
+#!/bin/bash
+printf '%s\n' "wezterm \$*" >>"$STATE_DIR/calls.log"
+if [ "\$*" = "cli list --format json" ]; then
+  cat "$STATE_DIR/panes.json" 2>/dev/null
+fi
+exit 0
+EOF
+  chmod +x "$STUB_BIN/wezterm"
+}
+
 install_sandboxed() {
   env -i HOME="$FAKE_HOME" PATH="$STUB_BIN:/usr/bin:/bin" TERM=dumb NO_COLOR=1 \
     SETUP_BREW_PREFIXES="$FAKE_BREW_PREFIX" SETUP_WEZTERM_APP="$FAKE_WEZTERM_APP" \
@@ -145,6 +158,18 @@ run_install_stderr() {
 
 run_install_stdin() {
   run install_sandboxed_stdin "$@"
+}
+
+hook_sandboxed() {
+  local stdin_json="$1"
+  shift
+  printf '%s' "$stdin_json" | env -i HOME="$FAKE_HOME" PATH="$STUB_BIN:/usr/bin:/bin" \
+    WEZTERM_PANE="${HOOK_PANE-7}" CLAUDE_NOTIFY_TTY="${HOOK_TTY-$STATE_DIR/tty.out}" \
+    /bin/bash "$NOTIFY_SH" "$@"
+}
+
+run_hook() {
+  run hook_sandboxed "$@"
 }
 
 run_menu() {

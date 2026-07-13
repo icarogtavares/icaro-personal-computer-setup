@@ -68,6 +68,16 @@ The last two default to what normal Macs use; the test suite points them at its 
 
 Only individual files are linked into `~/.claude/` — the rest of that directory is machine state (projects, history, caches) and stays out of git.
 
+## Claude in WezTerm
+
+Claude Code sessions announce their state to WezTerm: `settings.json` wires the session's hook events to `~/.claude/hooks/notify.sh`, which publishes a `claude_status` user var that `~/.wezterm.lua` renders in the tab bar.
+
+- 🔔 on the tab while a session waits for approval or input — plus the Submarine sound and the usual macOS banner.
+- ✅ on the tab when a turn finishes; it clears a moment after the tab is actually viewed.
+- `leader+a` jumps straight to the session that wants attention (🔔 first, ✅ as fallback).
+
+Hooks are read when a session starts, so restart any running `claude` after changing them.
+
 ## Everyday use
 
 The live files are symlinks, so edit them wherever is convenient (`code ~/.zshrc` or in the repo) — either way the repo sees the change:
