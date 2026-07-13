@@ -187,27 +187,24 @@ ensure_homebrew() {
   esac
 }
 
-ensure_formula() {
-  if command -v brew >/dev/null 2>&1 && brew list --formula "$1" >/dev/null 2>&1; then
-    ok "$1 already installed"
+ensure_brew_pkg() {
+  local kind="$1" name="$2"
+  if command -v brew >/dev/null 2>&1 && brew list "--$kind" "$name" >/dev/null 2>&1; then
+    ok "$name already installed"
   elif dry_run; then
-    info "would install $1"
+    info "would install $name"
   else
-    info "installing $1"
-    brew install "$1"
+    info "installing $name"
+    if [ "$kind" = "cask" ]; then
+      brew install --cask "$name"
+    else
+      brew install "$name"
+    fi
   fi
 }
 
-ensure_cask() {
-  if command -v brew >/dev/null 2>&1 && brew list --cask "$1" >/dev/null 2>&1; then
-    ok "$1 already installed"
-  elif dry_run; then
-    info "would install $1"
-  else
-    info "installing $1"
-    brew install --cask "$1"
-  fi
-}
+ensure_formula() { ensure_brew_pkg formula "$1"; }
+ensure_cask() { ensure_brew_pkg cask "$1"; }
 
 ensure_clone() {
   local url="$1" dir="$2"
@@ -294,12 +291,16 @@ install_zsh() {
   link_file "$REPO_DIR/zsh/p10k.zsh" "$HOME/.p10k.zsh"
 }
 
+select_module() {
+  known_module "$1" || usage_error "unknown module: $1 (available: ${MODULES[*]})"
+  SELECTED="$SELECTED $1"
+}
+
 parse_args() {
   local no_more_flags=0
   while [ $# -gt 0 ]; do
     if [ "$no_more_flags" = "1" ]; then
-      known_module "$1" || usage_error "unknown module: $1 (available: ${MODULES[*]})"
-      SELECTED="$SELECTED $1"
+      select_module "$1"
       shift
       continue
     fi
@@ -314,8 +315,7 @@ parse_args() {
       --) no_more_flags=1 ;;
       -*) usage_error "unknown option: $1" ;;
       *)
-        known_module "$1" || usage_error "unknown module: $1 (available: ${MODULES[*]})"
-        SELECTED="$SELECTED $1"
+        select_module "$1"
         ;;
     esac
     shift
