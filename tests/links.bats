@@ -8,37 +8,37 @@ setup() {
 @test "zsh module links the zsh dotfiles" {
   run_install --skip-deps zsh
   [ "$status" -eq 0 ]
-  assert_symlink "$FAKE_HOME/.zshrc" "$REPO_ROOT/zsh/zshrc"
-  assert_symlink "$FAKE_HOME/.zprofile" "$REPO_ROOT/zsh/zprofile"
-  assert_symlink "$FAKE_HOME/.p10k.zsh" "$REPO_ROOT/zsh/p10k.zsh"
+  assert_symlink "$FAKE_HOME/.zshrc" "$REPO_ROOT/modules/zsh/zshrc"
+  assert_symlink "$FAKE_HOME/.zprofile" "$REPO_ROOT/modules/zsh/zprofile"
+  assert_symlink "$FAKE_HOME/.p10k.zsh" "$REPO_ROOT/modules/zsh/p10k.zsh"
 }
 
 @test "claude module links all four files including the hooks dir" {
   run_install --skip-deps claude
   [ "$status" -eq 0 ]
-  assert_symlink "$FAKE_HOME/.claude/CLAUDE.md" "$REPO_ROOT/claude/CLAUDE.md"
-  assert_symlink "$FAKE_HOME/.claude/settings.json" "$REPO_ROOT/claude/settings.json"
-  assert_symlink "$FAKE_HOME/.claude/statusline.sh" "$REPO_ROOT/claude/statusline.sh"
-  assert_symlink "$FAKE_HOME/.claude/hooks/notify.sh" "$REPO_ROOT/claude/hooks/notify.sh"
+  assert_symlink "$FAKE_HOME/.claude/CLAUDE.md" "$REPO_ROOT/modules/claude/CLAUDE.md"
+  assert_symlink "$FAKE_HOME/.claude/settings.json" "$REPO_ROOT/modules/claude/settings.json"
+  assert_symlink "$FAKE_HOME/.claude/statusline.sh" "$REPO_ROOT/modules/claude/statusline.sh"
+  assert_symlink "$FAKE_HOME/.claude/hooks/notify.sh" "$REPO_ROOT/modules/claude/hooks/notify.sh"
 }
 
 @test "wezterm module links the wezterm config" {
   run_install --skip-deps wezterm
   [ "$status" -eq 0 ]
-  assert_symlink "$FAKE_HOME/.wezterm.lua" "$REPO_ROOT/wezterm/wezterm.lua"
+  assert_symlink "$FAKE_HOME/.wezterm.lua" "$REPO_ROOT/modules/wezterm/wezterm.lua"
 }
 
 @test "--all creates every link" {
   run_install --skip-deps --all
   [ "$status" -eq 0 ]
-  assert_symlink "$FAKE_HOME/.claude/CLAUDE.md" "$REPO_ROOT/claude/CLAUDE.md"
-  assert_symlink "$FAKE_HOME/.claude/settings.json" "$REPO_ROOT/claude/settings.json"
-  assert_symlink "$FAKE_HOME/.claude/statusline.sh" "$REPO_ROOT/claude/statusline.sh"
-  assert_symlink "$FAKE_HOME/.claude/hooks/notify.sh" "$REPO_ROOT/claude/hooks/notify.sh"
-  assert_symlink "$FAKE_HOME/.wezterm.lua" "$REPO_ROOT/wezterm/wezterm.lua"
-  assert_symlink "$FAKE_HOME/.zshrc" "$REPO_ROOT/zsh/zshrc"
-  assert_symlink "$FAKE_HOME/.zprofile" "$REPO_ROOT/zsh/zprofile"
-  assert_symlink "$FAKE_HOME/.p10k.zsh" "$REPO_ROOT/zsh/p10k.zsh"
+  assert_symlink "$FAKE_HOME/.claude/CLAUDE.md" "$REPO_ROOT/modules/claude/CLAUDE.md"
+  assert_symlink "$FAKE_HOME/.claude/settings.json" "$REPO_ROOT/modules/claude/settings.json"
+  assert_symlink "$FAKE_HOME/.claude/statusline.sh" "$REPO_ROOT/modules/claude/statusline.sh"
+  assert_symlink "$FAKE_HOME/.claude/hooks/notify.sh" "$REPO_ROOT/modules/claude/hooks/notify.sh"
+  assert_symlink "$FAKE_HOME/.wezterm.lua" "$REPO_ROOT/modules/wezterm/wezterm.lua"
+  assert_symlink "$FAKE_HOME/.zshrc" "$REPO_ROOT/modules/zsh/zshrc"
+  assert_symlink "$FAKE_HOME/.zprofile" "$REPO_ROOT/modules/zsh/zprofile"
+  assert_symlink "$FAKE_HOME/.p10k.zsh" "$REPO_ROOT/modules/zsh/p10k.zsh"
 }
 
 @test "second run is idempotent and reports already linked" {
@@ -47,7 +47,7 @@ setup() {
   run_install --skip-deps zsh
   [ "$status" -eq 0 ]
   assert_contains "$output" "already linked: $FAKE_HOME/.zshrc"
-  assert_symlink "$FAKE_HOME/.zshrc" "$REPO_ROOT/zsh/zshrc"
+  assert_symlink "$FAKE_HOME/.zshrc" "$REPO_ROOT/modules/zsh/zshrc"
   [ ! -e "$FAKE_HOME/.zshrc-backup" ]
 }
 
@@ -56,7 +56,7 @@ setup() {
   run_install --skip-deps zsh
   [ "$status" -eq 0 ]
   assert_contains "$output" "kept existing $FAKE_HOME/.zshrc as $FAKE_HOME/.zshrc-backup"
-  assert_symlink "$FAKE_HOME/.zshrc" "$REPO_ROOT/zsh/zshrc"
+  assert_symlink "$FAKE_HOME/.zshrc" "$REPO_ROOT/modules/zsh/zshrc"
   [ "$(cat "$FAKE_HOME/.zshrc-backup")" = "mine" ]
 }
 
@@ -70,7 +70,7 @@ setup() {
   stamped="$(compgen -G "$FAKE_HOME/.zshrc-backup-2*")"
   [ -n "$stamped" ]
   [ "$(cat "$stamped")" = "second" ]
-  assert_symlink "$FAKE_HOME/.zshrc" "$REPO_ROOT/zsh/zshrc"
+  assert_symlink "$FAKE_HOME/.zshrc" "$REPO_ROOT/modules/zsh/zshrc"
 }
 
 @test "a symlink pointing elsewhere is backed up and relinked" {
@@ -78,7 +78,7 @@ setup() {
   ln -s "$FAKE_HOME/other-zshrc" "$FAKE_HOME/.zshrc"
   run_install --skip-deps zsh
   [ "$status" -eq 0 ]
-  assert_symlink "$FAKE_HOME/.zshrc" "$REPO_ROOT/zsh/zshrc"
+  assert_symlink "$FAKE_HOME/.zshrc" "$REPO_ROOT/modules/zsh/zshrc"
   assert_symlink "$FAKE_HOME/.zshrc-backup" "$FAKE_HOME/other-zshrc"
 }
 
@@ -87,5 +87,5 @@ setup() {
   run_install --skip-deps wezterm
   [ "$status" -eq 0 ]
   [ "$(cat "$FAKE_HOME/.wezterm.lua-backup")" = "precious" ]
-  assert_symlink "$FAKE_HOME/.wezterm.lua" "$REPO_ROOT/wezterm/wezterm.lua"
+  assert_symlink "$FAKE_HOME/.wezterm.lua" "$REPO_ROOT/modules/wezterm/wezterm.lua"
 }

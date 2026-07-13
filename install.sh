@@ -2,6 +2,7 @@
 set -euo pipefail
 
 REPO_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+MODULES_DIR="$REPO_DIR/modules"
 VERSION="1.0.0"
 ALL=0
 DRY_RUN=0
@@ -239,10 +240,10 @@ install_claude() {
     fi
   fi
   info "[claude] linking configs"
-  link_file "$REPO_DIR/claude/CLAUDE.md" "$HOME/.claude/CLAUDE.md"
-  link_file "$REPO_DIR/claude/settings.json" "$HOME/.claude/settings.json"
-  link_file "$REPO_DIR/claude/statusline.sh" "$HOME/.claude/statusline.sh"
-  link_file "$REPO_DIR/claude/hooks/notify.sh" "$HOME/.claude/hooks/notify.sh"
+  link_file "$MODULES_DIR/claude/CLAUDE.md" "$HOME/.claude/CLAUDE.md"
+  link_file "$MODULES_DIR/claude/settings.json" "$HOME/.claude/settings.json"
+  link_file "$MODULES_DIR/claude/statusline.sh" "$HOME/.claude/statusline.sh"
+  link_file "$MODULES_DIR/claude/hooks/notify.sh" "$HOME/.claude/hooks/notify.sh"
 }
 
 install_wezterm() {
@@ -258,7 +259,7 @@ install_wezterm() {
     ensure_cask font-symbols-only-nerd-font
   fi
   info "[wezterm] linking configs"
-  link_file "$REPO_DIR/wezterm/wezterm.lua" "$HOME/.wezterm.lua"
+  link_file "$MODULES_DIR/wezterm/wezterm.lua" "$HOME/.wezterm.lua"
 }
 
 install_zsh() {
@@ -287,9 +288,9 @@ install_zsh() {
     ensure_formula zoxide
   fi
   info "[zsh] linking configs"
-  link_file "$REPO_DIR/zsh/zshrc" "$HOME/.zshrc"
-  link_file "$REPO_DIR/zsh/zprofile" "$HOME/.zprofile"
-  link_file "$REPO_DIR/zsh/p10k.zsh" "$HOME/.p10k.zsh"
+  link_file "$MODULES_DIR/zsh/zshrc" "$HOME/.zshrc"
+  link_file "$MODULES_DIR/zsh/zprofile" "$HOME/.zprofile"
+  link_file "$MODULES_DIR/zsh/p10k.zsh" "$HOME/.p10k.zsh"
 }
 
 select_module() {

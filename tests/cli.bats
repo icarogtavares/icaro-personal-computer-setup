@@ -81,7 +81,7 @@ setup() {
 @test "-- treats later arguments as module names" {
   run_install --skip-deps -- zsh
   [ "$status" -eq 0 ]
-  assert_symlink "$FAKE_HOME/.zshrc" "$REPO_ROOT/zsh/zshrc"
+  assert_symlink "$FAKE_HOME/.zshrc" "$REPO_ROOT/modules/zsh/zshrc"
 }
 
 @test "unknown module after -- exits 2" {

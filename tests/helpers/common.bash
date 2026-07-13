@@ -2,7 +2,7 @@
 
 REPO_ROOT="$(cd "${BATS_TEST_DIRNAME:?}/.." && pwd)"
 INSTALL_SH="$REPO_ROOT/install.sh"
-NOTIFY_SH="$REPO_ROOT/claude/hooks/notify.sh"
+NOTIFY_SH="$REPO_ROOT/modules/claude/hooks/notify.sh"
 
 sandbox_setup() {
   FAKE_HOME="${BATS_TEST_TMPDIR:?}/home"
