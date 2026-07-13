@@ -8,7 +8,8 @@ sandbox_setup() {
   STUB_BIN="${BATS_TEST_TMPDIR:?}/bin"
   STATE_DIR="${BATS_TEST_TMPDIR:?}/state"
   FAKE_BREW_PREFIX="${BATS_TEST_TMPDIR:?}/brew"
-  export FAKE_HOME STUB_BIN STATE_DIR FAKE_BREW_PREFIX
+  FAKE_WEZTERM_APP="${BATS_TEST_TMPDIR:?}/Applications/WezTerm.app"
+  export FAKE_HOME STUB_BIN STATE_DIR FAKE_BREW_PREFIX FAKE_WEZTERM_APP
   mkdir -p "$FAKE_HOME" "$STUB_BIN" "$STATE_DIR"
   : >"$STATE_DIR/calls.log"
   make_brew_stub
@@ -79,7 +80,8 @@ set_brew_list_exit() {
 
 install_sandboxed() {
   env -i HOME="$FAKE_HOME" PATH="$STUB_BIN:/usr/bin:/bin" TERM=dumb NO_COLOR=1 \
-    SETUP_BREW_PREFIXES="$FAKE_BREW_PREFIX" /bin/bash "$INSTALL_SH" "$@"
+    SETUP_BREW_PREFIXES="$FAKE_BREW_PREFIX" SETUP_WEZTERM_APP="$FAKE_WEZTERM_APP" \
+    /bin/bash "$INSTALL_SH" "$@"
 }
 
 install_sandboxed_env() {
@@ -97,7 +99,8 @@ install_sandboxed_env() {
     esac
   done
   env -i HOME="$FAKE_HOME" PATH="$STUB_BIN:/usr/bin:/bin" TERM=dumb \
-    SETUP_BREW_PREFIXES="$FAKE_BREW_PREFIX" ${pairs[@]+"${pairs[@]}"} /bin/bash "$INSTALL_SH" "$@"
+    SETUP_BREW_PREFIXES="$FAKE_BREW_PREFIX" SETUP_WEZTERM_APP="$FAKE_WEZTERM_APP" \
+    ${pairs[@]+"${pairs[@]}"} /bin/bash "$INSTALL_SH" "$@"
 }
 
 install_stdout_only() {

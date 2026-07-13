@@ -44,6 +44,20 @@ setup() {
   assert_calls_contain "brew install --cask font-symbols-only-nerd-font"
 }
 
+@test "wezterm installs the app cask when the bundle is missing" {
+  run_install wezterm
+  [ "$status" -eq 0 ]
+  assert_calls_contain "brew install --cask wezterm"
+}
+
+@test "wezterm skips the app cask when the bundle exists" {
+  mkdir -p "$FAKE_WEZTERM_APP"
+  run_install wezterm
+  [ "$status" -eq 0 ]
+  assert_contains "$output" "WezTerm.app already installed"
+  refute_calls_contain "brew install --cask wezterm"
+}
+
 @test "claude fetches the claude installer when the binary is absent" {
   run_install claude
   [ "$status" -eq 0 ]

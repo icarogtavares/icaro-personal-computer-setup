@@ -36,6 +36,7 @@ setup() {
   assert_contains "$output" "--help"
   assert_contains "$output" "SETUP_SKIP_DEPS"
   assert_contains "$output" "SETUP_BREW_PREFIXES"
+  assert_contains "$output" "SETUP_WEZTERM_APP"
   assert_contains "$output" "NO_COLOR"
   assert_contains "$output" "claude"
   assert_contains "$output" "wezterm"

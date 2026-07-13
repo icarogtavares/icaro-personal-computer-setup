@@ -9,6 +9,7 @@ ASSUME_YES=0
 BREW_DECLINED=0
 SKIP_DEPS="${SETUP_SKIP_DEPS:-0}"
 BREW_PREFIXES="${SETUP_BREW_PREFIXES:-/opt/homebrew /usr/local}"
+WEZTERM_APP="${SETUP_WEZTERM_APP:-/Applications/WezTerm.app}"
 SELECTED=""
 
 MODULE_TABLE='claude|Claude Code config (CLAUDE.md, settings, statusline, hooks) + rtk, jq
@@ -96,6 +97,7 @@ Options:
 Environment:
   SETUP_SKIP_DEPS=1     Same as --skip-deps
   SETUP_BREW_PREFIXES   Homebrew prefixes to probe (default: /opt/homebrew /usr/local)
+  SETUP_WEZTERM_APP     WezTerm app bundle path (default: /Applications/WezTerm.app)
   NO_COLOR              Disable colored output
 
 Existing files are never deleted: they are renamed to <name>-backup,
@@ -246,7 +248,7 @@ install_claude() {
 install_wezterm() {
   info "[wezterm] dependencies"
   if ensure_homebrew; then
-    if [ -d "/Applications/WezTerm.app" ]; then
+    if [ -d "$WEZTERM_APP" ]; then
       ok "WezTerm.app already installed"
     else
       ensure_cask wezterm
