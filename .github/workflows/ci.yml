@@ -26,6 +26,10 @@ jobs:
     timeout-minutes: 15
     steps:
       - uses: actions/checkout@v5
+      - uses: actions/cache@v4
+        with:
+          path: tests/.deps/bats-core
+          key: bats-core-v1.13.0
       - run: ./tests/run test
 
   test-ubuntu:
@@ -33,5 +37,9 @@ jobs:
     timeout-minutes: 15
     steps:
       - uses: actions/checkout@v5
+      - uses: actions/cache@v4
+        with:
+          path: tests/.deps/bats-core
+          key: bats-core-v1.13.0
       - run: sudo apt-get update && sudo apt-get install -y expect
       - run: ./tests/run test
