@@ -73,6 +73,8 @@ end)
 -- toast that does NOT fire this bell event, and its Notification hook plays
 -- Submarine) so the two are distinguishable by ear. Any file in
 -- /System/Library/Sounds works: Glass, Ping, Hero, Submarine, Funk, Blow, Pop...
+-- The same hook also publishes a claude_status user var per pane; the handlers
+-- below the bell turn it into 🔔/✅ tab icons and the leader+a jump target.
 local bell_sound = "/System/Library/Sounds/Blow.aiff"
 
 -- A non-Claude program rang the terminal bell. We own the bell here (instead of
@@ -105,6 +107,101 @@ wezterm.on("bell", function(window, pane)
   if is_macos then
     -- background_child_process = fire-and-forget, never blocks the UI
     wezterm.background_child_process({ "/usr/bin/afplay", bell_sound })
+  end
+end)
+
+-- Claude Code attention state, published per pane by ~/.claude/hooks/notify.sh
+-- as an OSC 1337 user var: claude_status = "waiting" | "done" | "" (clear).
+-- Cached in wezterm.GLOBAL (survives config reloads) because format-tab-title
+-- only exposes user vars for panes of the ACTIVE tab, and the whole point is
+-- icons on BACKGROUND tabs. GLOBAL nested writes don't persist reliably, so
+-- every mutation goes copy -> change -> whole-value reassignment.
+local function read_claude_status()
+  local copied = {}
+  local stored = wezterm.GLOBAL.claude_status
+  if stored then
+    for key, entry in pairs(stored) do
+      copied[key] = { status = entry.status, tab_id = entry.tab_id }
+    end
+  end
+  return copied
+end
+
+wezterm.on("user-var-changed", function(_, pane, name, value)
+  if name ~= "claude_status" then
+    return
+  end
+  local state = read_claude_status()
+  local key = tostring(pane:pane_id())
+  if value == "" then
+    state[key] = nil
+  else
+    local ok, tab = pcall(function()
+      return pane:tab()
+    end)
+    state[key] = {
+      status = value,
+      tab_id = (ok and tab) and tab:tab_id() or -1,
+    }
+  end
+  wezterm.GLOBAL.claude_status = state
+end)
+
+-- 🔔 beats ✅ when a tab hosts several claude panes.
+local function claude_tab_icon(tab_id)
+  local icon = ""
+  for _, entry in pairs(read_claude_status()) do
+    if entry.tab_id == tab_id then
+      if entry.status == "waiting" then
+        return "🔔 "
+      elseif entry.status == "done" then
+        icon = "✅ "
+      end
+    end
+  end
+  return icon
+end
+
+wezterm.on("format-tab-title", function(tab, _, _, _, _, max_width)
+  local title = tab.tab_title
+  if not title or #title == 0 then
+    title = tab.active_pane.title
+  end
+  title = claude_tab_icon(tab.tab_id) .. title
+  return " " .. wezterm.truncate_right(title, max_width - 2) .. " "
+end)
+
+-- Housekeeping on the ~1s update-right-status tick (every handler registered
+-- for an event runs, so the LEADER one above is unaffected): drop entries for
+-- dead panes, follow panes moved between tabs, and clear ✅ only once its tab
+-- has actually been SEEN (window focused + tab active), mirroring the bell
+-- handler's "watching" semantics.
+wezterm.on("update-right-status", function(window, _)
+  local state = read_claude_status()
+  local changed = false
+  local active_tab = window:active_tab()
+  local active_tab_id = active_tab and active_tab:tab_id() or -1
+  for key, entry in pairs(state) do
+    local ok, mux_pane = pcall(wezterm.mux.get_pane, tonumber(key))
+    if not ok or not mux_pane then
+      state[key] = nil
+      changed = true
+    else
+      local tab_ok, tab = pcall(function()
+        return mux_pane:tab()
+      end)
+      local tab_id = (tab_ok and tab) and tab:tab_id() or entry.tab_id
+      if entry.status == "done" and window:is_focused() and tab_id == active_tab_id then
+        state[key] = nil
+        changed = true
+      elseif tab_id ~= entry.tab_id then
+        entry.tab_id = tab_id
+        changed = true
+      end
+    end
+  end
+  if changed then
+    wezterm.GLOBAL.claude_status = state
   end
 end)
 
@@ -148,6 +245,36 @@ config.keys = {
   { key = "[", mods = "LEADER", action = act.ActivateCopyMode },                        -- vim-like scrollback nav
   { key = "r", mods = "LEADER", action = act.ReloadConfiguration },
   { key = "w", mods = "LEADER", action = act.ShowLauncherArgs({ flags = "FUZZY|WORKSPACES" }) },
+
+  -- jump to the claude session that wants you (🔔 first, ✅ as fallback)
+  {
+    key = "a",
+    mods = "LEADER",
+    action = wezterm.action_callback(function(_, _)
+      local target
+      for key, entry in pairs(read_claude_status()) do
+        if entry.status == "waiting" then
+          target = tonumber(key)
+          break
+        end
+        target = target or tonumber(key)
+      end
+      if not target then
+        return
+      end
+      local ok, mux_pane = pcall(wezterm.mux.get_pane, target)
+      if not ok or not mux_pane then
+        return
+      end
+      mux_pane:activate()
+      local win_ok, gui_window = pcall(function()
+        return mux_pane:window():gui_window()
+      end)
+      if win_ok and gui_window then
+        gui_window:focus()
+      end
+    end),
+  },
 
   -- rename the current tab
   { key = ",", mods = "LEADER", action = act.PromptInputLine({
