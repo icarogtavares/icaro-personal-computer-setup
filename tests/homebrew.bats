@@ -10,7 +10,7 @@ setup() {
   run_install_stdin n claude
   [ "$status" -eq 0 ]
   assert_contains "$output" "skipping dependency installation (Homebrew unavailable)"
-  assert_symlink "$FAKE_HOME/.claude/CLAUDE.md" "$REPO_ROOT/claude/CLAUDE.md"
+  assert_symlink "$FAKE_HOME/.claude/CLAUDE.md" "$REPO_ROOT/modules/claude/CLAUDE.md"
   refute_calls_contain "brew list"
   refute_calls_contain "brew install"
 }
@@ -38,8 +38,8 @@ setup() {
   run_install_stdin n --all
   [ "$status" -eq 0 ]
   [ "$(grep -c 'Install it now?' <<<"$output")" -eq 1 ]
-  assert_symlink "$FAKE_HOME/.wezterm.lua" "$REPO_ROOT/wezterm/wezterm.lua"
-  assert_symlink "$FAKE_HOME/.zshrc" "$REPO_ROOT/zsh/zshrc"
+  assert_symlink "$FAKE_HOME/.wezterm.lua" "$REPO_ROOT/modules/wezterm/wezterm.lua"
+  assert_symlink "$FAKE_HOME/.zshrc" "$REPO_ROOT/modules/zsh/zshrc"
 }
 
 @test "an existing brew prefix is discovered and activated" {
@@ -49,7 +49,7 @@ setup() {
   refute_contains "$output" "Install it now?"
   assert_calls_contain "brew shellenv"
   assert_calls_contain "brew install jq"
-  assert_symlink "$FAKE_HOME/.claude/CLAUDE.md" "$REPO_ROOT/claude/CLAUDE.md"
+  assert_symlink "$FAKE_HOME/.claude/CLAUDE.md" "$REPO_ROOT/modules/claude/CLAUDE.md"
 }
 
 @test "accepting the homebrew prompt installs and activates brew" {

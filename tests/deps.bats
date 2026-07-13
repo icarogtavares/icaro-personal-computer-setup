@@ -15,7 +15,7 @@ setup() {
   run_install_env SETUP_SKIP_DEPS=1 --all
   [ "$status" -eq 0 ]
   assert_no_calls
-  assert_symlink "$FAKE_HOME/.zshrc" "$REPO_ROOT/zsh/zshrc"
+  assert_symlink "$FAKE_HOME/.zshrc" "$REPO_ROOT/modules/zsh/zshrc"
 }
 
 @test "claude installs jq through brew when missing" {

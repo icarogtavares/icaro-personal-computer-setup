@@ -31,9 +31,9 @@ setup() {
 @test "a selects all and enter installs every module" {
   run_menu a ENTER
   [ "$status" -eq 0 ]
-  assert_symlink "$FAKE_HOME/.claude/CLAUDE.md" "$REPO_ROOT/claude/CLAUDE.md"
-  assert_symlink "$FAKE_HOME/.wezterm.lua" "$REPO_ROOT/wezterm/wezterm.lua"
-  assert_symlink "$FAKE_HOME/.zshrc" "$REPO_ROOT/zsh/zshrc"
+  assert_symlink "$FAKE_HOME/.claude/CLAUDE.md" "$REPO_ROOT/modules/claude/CLAUDE.md"
+  assert_symlink "$FAKE_HOME/.wezterm.lua" "$REPO_ROOT/modules/wezterm/wezterm.lua"
+  assert_symlink "$FAKE_HOME/.zshrc" "$REPO_ROOT/modules/zsh/zshrc"
 }
 
 @test "n clears the selection" {
@@ -53,7 +53,7 @@ setup() {
 @test "enter installs only the selected module" {
   run_menu 3 ENTER
   [ "$status" -eq 0 ]
-  assert_symlink "$FAKE_HOME/.zshrc" "$REPO_ROOT/zsh/zshrc"
+  assert_symlink "$FAKE_HOME/.zshrc" "$REPO_ROOT/modules/zsh/zshrc"
   [ ! -e "$FAKE_HOME/.claude/CLAUDE.md" ]
   [ ! -e "$FAKE_HOME/.wezterm.lua" ]
 }
@@ -87,7 +87,7 @@ setup() {
 @test "space-selected modules install on enter" {
   run_menu DOWN SPACE ENTER
   [ "$status" -eq 0 ]
-  assert_symlink "$FAKE_HOME/.wezterm.lua" "$REPO_ROOT/wezterm/wezterm.lua"
+  assert_symlink "$FAKE_HOME/.wezterm.lua" "$REPO_ROOT/modules/wezterm/wezterm.lua"
   [ ! -e "$FAKE_HOME/.claude/CLAUDE.md" ]
   [ ! -e "$FAKE_HOME/.zshrc" ]
 }
@@ -95,8 +95,8 @@ setup() {
 @test "the cursor clamps at the top and bottom" {
   run_menu UP SPACE DOWN DOWN DOWN DOWN SPACE ENTER
   [ "$status" -eq 0 ]
-  assert_symlink "$FAKE_HOME/.claude/CLAUDE.md" "$REPO_ROOT/claude/CLAUDE.md"
-  assert_symlink "$FAKE_HOME/.zshrc" "$REPO_ROOT/zsh/zshrc"
+  assert_symlink "$FAKE_HOME/.claude/CLAUDE.md" "$REPO_ROOT/modules/claude/CLAUDE.md"
+  assert_symlink "$FAKE_HOME/.zshrc" "$REPO_ROOT/modules/zsh/zshrc"
   [ ! -e "$FAKE_HOME/.wezterm.lua" ]
 }
 

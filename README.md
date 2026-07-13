@@ -4,7 +4,7 @@
 ![Platform](https://img.shields.io/badge/platform-macOS-blue)
 [![License](https://img.shields.io/github/license/icarogtavares/icaro-personal-computer-setup)](LICENSE)
 
-Everything needed to rebuild my macOS machine. Configuration files live in this repo, grouped in topic modules; an interactive installer symlinks them into place and installs the tools they depend on. Because the live configs are symlinks, the repo stays the single source of truth — edit any config where it lives, see the change with `git diff`, commit, push.
+Everything needed to rebuild my macOS machine. Configuration files live in this repo, grouped in topic modules under `modules/`; an interactive installer symlinks them into place and installs the tools they depend on. Because the live configs are symlinks, the repo stays the single source of truth — edit any config where it lives, see the change with `git diff`, commit, push.
 
 ## Quick start
 
@@ -58,6 +58,18 @@ Environment variables:
 
 The last two default to what normal Macs use; the test suite points them at its sandbox.
 
+## Layout
+
+```
+icaro-personal-computer-setup/
+├── install.sh    installer — menu, symlinking, dependencies
+├── modules/      config payload — everything that gets linked into $HOME
+│   ├── claude/
+│   ├── wezterm/
+│   └── zsh/
+└── tests/        sandboxed bats suite + lint harness (tests/run)
+```
+
 ## Modules
 
 | Module | Links into `$HOME` | Installs when missing |
@@ -94,9 +106,9 @@ git add -p && git commit
 
 Adding a module:
 
-1. Create a directory with the config files (non-hidden names).
+1. Create a directory under `modules/` with the config files (non-hidden names).
 2. Add a `name|description` line to `MODULE_TABLE` in `install.sh`.
-3. Write an `install_<name>` function: dependency checks first, then `link_file "$REPO_DIR/<module>/<file>" "$HOME/<dotfile>"` calls.
+3. Write an `install_<name>` function: dependency checks first, then `link_file "$MODULES_DIR/<module>/<file>" "$HOME/<dotfile>"` calls.
 
 Run the suite before committing and add tests for the new module's links:
 
@@ -106,7 +118,7 @@ Run the suite before committing and add tests for the new module's links:
 ./tests/run test --filter menu    # subset of tests
 ```
 
-The first run clones [bats-core](https://github.com/bats-core/bats-core) into the gitignored `tests/.deps/` (cached in CI). Formatting is enforced with `shfmt -i 2 -ci` across `install.sh`, the test harness and the `claude/` scripts.
+The first run clones [bats-core](https://github.com/bats-core/bats-core) into the gitignored `tests/.deps/` (cached in CI). Formatting is enforced with `shfmt -i 2 -ci` across `install.sh`, the test harness and the `modules/claude/` scripts.
 
 ## After installing
 
