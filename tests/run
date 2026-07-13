@@ -32,7 +32,8 @@ lint() {
     printf 'shellcheck not found; skipping shellcheck lint\n' >&2
   fi
   if command -v shfmt >/dev/null 2>&1; then
-    shfmt -d -i 2 -ci "$ROOT/install.sh" "$ROOT/tests/run" "$ROOT/tests/helpers/common.bash"
+    shfmt -d -i 2 -ci "$ROOT/install.sh" "$ROOT/tests/run" "$ROOT/tests/helpers/common.bash" \
+      "$ROOT/claude/hooks/notify.sh"
   elif [ -n "${CI:-}" ]; then
     printf 'shfmt is required in CI\n' >&2
     exit 1
