@@ -73,5 +73,7 @@
   "enabledPlugins": {},
   "effortLevel": "high",
   "theme": "dark",
-  "preferredNotifChannel": "iterm2"
+  "preferredNotifChannel": "iterm2",
+  "agentPushNotifEnabled": true,
+  "inputNeededNotifEnabled": true
 }
