@@ -151,6 +151,12 @@ run_menu() {
   run "${BATS_TEST_DIRNAME:?}/helpers/menu.exp" "$REPO_ROOT" "$FAKE_HOME" "$STUB_BIN" "$@"
 }
 
+run_menu_color() {
+  export MENU_COLOR=1
+  run_menu "$@"
+  unset MENU_COLOR
+}
+
 assert_contains() {
   case "$1" in
     *"$2"*)

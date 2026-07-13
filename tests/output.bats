@@ -24,6 +24,18 @@ setup() {
   assert_contains "$output" "unknown option: --bogus"
 }
 
+@test "a color terminal renders the blue info arrows" {
+  run_menu_color 1 ENTER
+  [ "$status" -eq 0 ]
+  assert_contains "$output" $'\033[1;34m==>\033[0m'
+}
+
+@test "a color terminal renders the checked box in green" {
+  run_menu_color 1 q
+  [ "$status" -eq 0 ]
+  assert_contains "$output" $'\033[0;32mx\033[0m'
+}
+
 @test "--help documents every flag, env var and module" {
   run_install --help
   [ "$status" -eq 0 ]
