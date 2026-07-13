@@ -3,7 +3,7 @@ set -euo pipefail
 
 REPO_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 MODULES_DIR="$REPO_DIR/modules"
-VERSION="1.0.0"
+VERSION="2.0.0"
 ALL=0
 DRY_RUN=0
 ASSUME_YES=0
@@ -13,14 +13,27 @@ BREW_PREFIXES="${SETUP_BREW_PREFIXES:-/opt/homebrew /usr/local}"
 WEZTERM_APP="${SETUP_WEZTERM_APP:-/Applications/WezTerm.app}"
 SELECTED=""
 
-MODULE_TABLE='claude|Claude Code config (CLAUDE.md, settings, statusline, hooks) + jq
-wezterm|WezTerm config + app and Nerd Fonts
-zsh|Oh My Zsh, powerlevel10k, plugins, fzf/eza/bat/zoxide + zsh dotfiles'
+COMPONENT_TABLE='claude-settings|claude|Claude Code CLI + CLAUDE.md + base settings
+claude-statusline|claude|statusline script + statusLine setting
+claude-notify|claude|notification hooks + notify preferences
+wezterm|wezterm|WezTerm config + app and Nerd Fonts
+zsh-core|zsh|Oh My Zsh, p10k, shell tools + zsh dotfiles
+zsh-git|zsh|git plugin (Oh My Zsh built-in)
+zsh-autosuggestions|zsh|zsh-autosuggestions plugin
+zsh-syntax-highlighting|zsh|zsh-syntax-highlighting plugin'
 
+COMPONENTS=()
+COMPONENT_MODULES=()
 MODULES=()
-while IFS='|' read -r module_name _; do
-  MODULES+=("$module_name")
-done <<<"$MODULE_TABLE"
+last_module=""
+while IFS='|' read -r component_name module_name _; do
+  COMPONENTS+=("$component_name")
+  COMPONENT_MODULES+=("$module_name")
+  if [ "$module_name" != "$last_module" ]; then
+    MODULES+=("$module_name")
+    last_module="$module_name"
+  fi
+done <<<"$COMPONENT_TABLE"
 
 if [ -t 1 ] && [ -z "${NO_COLOR:-}" ]; then
   BLUE=$'\033[1;34m'
@@ -52,14 +65,24 @@ usage_error() {
   exit 2
 }
 
-describe_module() {
+describe_component() {
   local name desc
-  while IFS='|' read -r name desc; do
+  while IFS='|' read -r name _ desc; do
     if [ "$name" = "$1" ]; then
       printf '%s' "$desc"
       return 0
     fi
-  done <<<"$MODULE_TABLE"
+  done <<<"$COMPONENT_TABLE"
+  return 1
+}
+
+known_component() {
+  local c
+  for c in "${COMPONENTS[@]}"; do
+    if [ "$c" = "$1" ]; then
+      return 0
+    fi
+  done
   return 1
 }
 
@@ -73,25 +96,27 @@ known_module() {
   return 1
 }
 
-list_modules() {
-  printf '%s\n' "${MODULES[@]}"
+list_components() {
+  printf '%s\n' "${COMPONENTS[@]}"
 }
 
 usage() {
   cat <<EOF
-Usage: ./install.sh [options] [module ...]
+Usage: ./install.sh [options] [component ...]
 
-Modules:
+Components:
 EOF
-  local m
-  for m in "${MODULES[@]}"; do
-    printf '  %-10s %s\n' "$m" "$(describe_module "$m")"
+  local c
+  for c in "${COMPONENTS[@]}"; do
+    printf '  %-23s %s\n' "$c" "$(describe_component "$c")"
   done
   cat <<EOF
 
+Module aliases select every component of a module: ${MODULES[*]}
+
 Options:
-  -a, --all        Install all modules
-  -l, --list       List available modules
+  -a, --all        Install all components
+  -l, --list       List available components
   -n, --dry-run    Preview without changing anything
   -y, --yes        Assume yes; never prompt
       --skip-deps  Skip Homebrew/dependency installs
@@ -104,8 +129,10 @@ Environment:
   SETUP_WEZTERM_APP     WezTerm app bundle path (default: /Applications/WezTerm.app)
   NO_COLOR              Disable colored output
 
-Existing files are never deleted: they are renamed to <name>-backup,
-or <name>-backup-<timestamp> when a backup already exists.
+Configs are written as real files, never symlinks; re-run after editing
+the sources under modules/. Existing files are never deleted: they are
+renamed to <name>-backup, or <name>-backup-<timestamp> when a backup
+already exists.
 
 Run with no arguments in a terminal for an interactive menu.
 EOF
@@ -127,24 +154,76 @@ backup_existing() {
   warn "kept existing $target as $backup"
 }
 
-link_file() {
+copy_file() {
   local src="$1" dst="$2"
-  if [ -L "$dst" ]; then
-    if [ "$(readlink "$dst")" = "$src" ]; then
-      ok "already linked: $dst"
-      return 0
-    fi
-    backup_existing "$dst"
-  elif [ -e "$dst" ]; then
+  if [ -f "$dst" ] && [ ! -L "$dst" ] && cmp -s "$src" "$dst"; then
+    ok "already up to date: $dst"
+    return 0
+  fi
+  if [ -e "$dst" ] || [ -L "$dst" ]; then
     backup_existing "$dst"
   fi
   if dry_run; then
-    info "would link $dst -> $src"
+    info "would copy $dst"
     return 0
   fi
   mkdir -p "$(dirname "$dst")"
-  ln -s "$src" "$dst"
-  ok "linked $dst -> $src"
+  cp "$src" "$dst"
+  ok "copied $dst"
+}
+
+write_file() {
+  local dst="$1" content="$2"
+  if [ -f "$dst" ] && [ ! -L "$dst" ] && [ "$(cat "$dst")" = "$content" ]; then
+    ok "already up to date: $dst"
+    return 0
+  fi
+  if [ -e "$dst" ] || [ -L "$dst" ]; then
+    backup_existing "$dst"
+  fi
+  if dry_run; then
+    info "would write $dst"
+    return 0
+  fi
+  mkdir -p "$(dirname "$dst")"
+  printf '%s\n' "$content" >"$dst"
+  ok "wrote $dst"
+}
+
+json_merge() {
+  local out="{" first=1 body fragment
+  for fragment in "$@"; do
+    body="$(sed '1d;$d' "$fragment")"
+    if [ "$first" = "1" ]; then
+      first=0
+    else
+      out="$out,"
+    fi
+    out="$out
+$body"
+  done
+  printf '%s\n}' "$out"
+}
+
+render_zshrc() {
+  local keep=""
+  if component_selected zsh-git; then
+    keep="$keep git"
+  fi
+  if component_selected zsh-autosuggestions; then
+    keep="$keep zsh-autosuggestions"
+  fi
+  if component_selected zsh-syntax-highlighting; then
+    keep="$keep zsh-syntax-highlighting"
+  fi
+  awk -v keep="$keep " '
+    inblock && $0 == ")" { inblock = 0 }
+    inblock {
+      if (index(keep, " " $1 " ") == 0) next
+    }
+    $0 == "plugins=(" { inblock = 1 }
+    { print }
+  ' "$MODULES_DIR/zsh/zshrc"
 }
 
 activate_brew_prefix() {
@@ -227,7 +306,7 @@ install_claude() {
   if ensure_homebrew; then
     ensure_formula jq
   fi
-  if deps_enabled; then
+  if component_selected claude-settings && deps_enabled; then
     if command -v claude >/dev/null 2>&1; then
       ok "Claude Code already installed"
     elif dry_run; then
@@ -239,11 +318,22 @@ install_claude() {
       /bin/bash -c "$claude_installer"
     fi
   fi
-  info "[claude] linking configs"
-  link_file "$MODULES_DIR/claude/CLAUDE.md" "$HOME/.claude/CLAUDE.md"
-  link_file "$MODULES_DIR/claude/settings.json" "$HOME/.claude/settings.json"
-  link_file "$MODULES_DIR/claude/statusline.sh" "$HOME/.claude/statusline.sh"
-  link_file "$MODULES_DIR/claude/hooks/notify.sh" "$HOME/.claude/hooks/notify.sh"
+  info "[claude] writing configs"
+  local fragments
+  fragments=()
+  if component_selected claude-settings; then
+    copy_file "$MODULES_DIR/claude/CLAUDE.md" "$HOME/.claude/CLAUDE.md"
+    fragments+=("$MODULES_DIR/claude/settings/base.json")
+  fi
+  if component_selected claude-statusline; then
+    copy_file "$MODULES_DIR/claude/statusline.sh" "$HOME/.claude/statusline.sh"
+    fragments+=("$MODULES_DIR/claude/settings/statusline.json")
+  fi
+  if component_selected claude-notify; then
+    copy_file "$MODULES_DIR/claude/hooks/notify.sh" "$HOME/.claude/hooks/notify.sh"
+    fragments+=("$MODULES_DIR/claude/settings/notify.json")
+  fi
+  write_file "$HOME/.claude/settings.json" "$(json_merge ${fragments[@]+"${fragments[@]}"})"
 }
 
 install_wezterm() {
@@ -258,8 +348,8 @@ install_wezterm() {
     ensure_cask font-hack-nerd-font
     ensure_cask font-symbols-only-nerd-font
   fi
-  info "[wezterm] linking configs"
-  link_file "$MODULES_DIR/wezterm/wezterm.lua" "$HOME/.wezterm.lua"
+  info "[wezterm] writing configs"
+  copy_file "$MODULES_DIR/wezterm/wezterm.lua" "$HOME/.wezterm.lua"
 }
 
 install_zsh() {
@@ -278,8 +368,12 @@ install_zsh() {
     fi
     local custom="$HOME/.oh-my-zsh/custom"
     ensure_clone https://github.com/romkatv/powerlevel10k.git "$custom/themes/powerlevel10k"
-    ensure_clone https://github.com/zsh-users/zsh-autosuggestions.git "$custom/plugins/zsh-autosuggestions"
-    ensure_clone https://github.com/zsh-users/zsh-syntax-highlighting.git "$custom/plugins/zsh-syntax-highlighting"
+    if component_selected zsh-autosuggestions; then
+      ensure_clone https://github.com/zsh-users/zsh-autosuggestions.git "$custom/plugins/zsh-autosuggestions"
+    fi
+    if component_selected zsh-syntax-highlighting; then
+      ensure_clone https://github.com/zsh-users/zsh-syntax-highlighting.git "$custom/plugins/zsh-syntax-highlighting"
+    fi
   fi
   if ensure_homebrew; then
     ensure_formula fzf
@@ -287,29 +381,79 @@ install_zsh() {
     ensure_formula bat
     ensure_formula zoxide
   fi
-  info "[zsh] linking configs"
-  link_file "$MODULES_DIR/zsh/zshrc" "$HOME/.zshrc"
-  link_file "$MODULES_DIR/zsh/zprofile" "$HOME/.zprofile"
-  link_file "$MODULES_DIR/zsh/p10k.zsh" "$HOME/.p10k.zsh"
+  info "[zsh] writing configs"
+  write_file "$HOME/.zshrc" "$(render_zshrc)"
+  copy_file "$MODULES_DIR/zsh/zprofile" "$HOME/.zprofile"
+  copy_file "$MODULES_DIR/zsh/p10k.zsh" "$HOME/.p10k.zsh"
 }
 
-select_module() {
-  known_module "$1" || usage_error "unknown module: $1 (available: ${MODULES[*]})"
+component_selected() {
+  case " $SELECTED " in
+    *" $1 "*) return 0 ;;
+  esac
+  return 1
+}
+
+select_component() {
+  if component_selected "$1"; then
+    return 0
+  fi
   SELECTED="$SELECTED $1"
+}
+
+select_arg() {
+  local i
+  if known_component "$1"; then
+    select_component "$1"
+    return 0
+  fi
+  if known_module "$1"; then
+    i=0
+    while [ "$i" -lt "${#COMPONENTS[@]}" ]; do
+      if [ "${COMPONENT_MODULES[$i]}" = "$1" ]; then
+        select_component "${COMPONENTS[$i]}"
+      fi
+      i=$((i + 1))
+    done
+    return 0
+  fi
+  usage_error "unknown component: $1 (components: ${COMPONENTS[*]}; module aliases: ${MODULES[*]})"
+}
+
+module_selected() {
+  local i
+  i=0
+  while [ "$i" -lt "${#COMPONENTS[@]}" ]; do
+    if [ "${COMPONENT_MODULES[$i]}" = "$1" ] && component_selected "${COMPONENTS[$i]}"; then
+      return 0
+    fi
+    i=$((i + 1))
+  done
+  return 1
+}
+
+resolve_selection() {
+  local plugin
+  for plugin in zsh-git zsh-autosuggestions zsh-syntax-highlighting; do
+    if component_selected "$plugin" && ! component_selected zsh-core; then
+      info "zsh plugins require zsh-core; selecting it"
+      select_component zsh-core
+    fi
+  done
 }
 
 parse_args() {
   local no_more_flags=0
   while [ $# -gt 0 ]; do
     if [ "$no_more_flags" = "1" ]; then
-      select_module "$1"
+      select_arg "$1"
       shift
       continue
     fi
     case "$1" in
       -a | --all) ALL=1 ;;
       -l | --list)
-        list_modules
+        list_components
         exit 0
         ;;
       -n | --dry-run) DRY_RUN=1 ;;
@@ -326,7 +470,7 @@ parse_args() {
       --) no_more_flags=1 ;;
       -*) usage_error "unknown option: $1" ;;
       *)
-        select_module "$1"
+        select_arg "$1"
         ;;
     esac
     shift
@@ -341,11 +485,11 @@ menu_restore() {
 menu_draw() {
   local i mark desc pointer
   if [ "$1" = "1" ]; then
-    printf '\033[%dA\033[J' "$((${#MODULES[@]} + 4))"
+    printf '\033[%dA\033[J' "$((${#COMPONENTS[@]} + 4))"
   fi
   printf '%s\n\n' "${BOLD}icaro-personal-computer-setup${RESET}"
   i=0
-  while [ "$i" -lt "${#MODULES[@]}" ]; do
+  while [ "$i" -lt "${#COMPONENTS[@]}" ]; do
     mark=" "
     if [ "${checked[i]}" = "1" ]; then
       mark="${GREEN}x${RESET}"
@@ -354,11 +498,11 @@ menu_draw() {
     if [ "$i" = "$cursor" ]; then
       pointer="${BOLD}> ${RESET}"
     fi
-    desc="$(describe_module "${MODULES[$i]}")"
-    printf '%s[%s] %d. %-10s %s\n' "$pointer" "$mark" "$((i + 1))" "${MODULES[$i]}" "${desc:0:56}"
+    desc="$(describe_component "${COMPONENTS[$i]}")"
+    printf '%s[%s] %d. %-23s %s\n' "$pointer" "$mark" "$((i + 1))" "${COMPONENTS[$i]}" "${desc:0:44}"
     i=$((i + 1))
   done
-  printf '\n  ↑↓ move · space/1-%d toggle · a all · n none · enter install · q quit\n' "${#MODULES[@]}"
+  printf '\n  ↑↓ move · space/1-%d toggle · a all · n none · enter install · q quit\n' "${#COMPONENTS[@]}"
 }
 
 toggle_row() {
@@ -372,7 +516,7 @@ toggle_row() {
 
 interactive_select() {
   local checked count i key cursor
-  count=${#MODULES[@]}
+  count=${#COMPONENTS[@]}
   cursor=0
   checked=()
   i=0
@@ -444,7 +588,7 @@ interactive_select() {
   i=0
   while [ "$i" -lt "$count" ]; do
     if [ "${checked[i]}" = "1" ]; then
-      SELECTED="$SELECTED ${MODULES[$i]}"
+      SELECTED="$SELECTED ${COMPONENTS[$i]}"
     fi
     i=$((i + 1))
   done
@@ -457,35 +601,34 @@ interactive_select() {
 main() {
   parse_args "$@"
   if [ "$ALL" = "1" ]; then
-    SELECTED="${MODULES[*]}"
+    SELECTED="${COMPONENTS[*]}"
   fi
   if [ -z "${SELECTED// /}" ]; then
     if [ "$ASSUME_YES" = "1" ]; then
-      usage_error "no modules specified (--yes disables the interactive menu); try --all"
+      usage_error "no components specified (--yes disables the interactive menu); try --all"
     elif [ -t 0 ] && [ -t 1 ]; then
       interactive_select
     else
-      usage_error "no modules specified and no interactive terminal; try --all"
+      usage_error "no components specified and no interactive terminal; try --all"
     fi
   fi
+  resolve_selection
   if dry_run; then
     info "dry run: no changes will be made"
   fi
   local m
   for m in "${MODULES[@]}"; do
-    case " $SELECTED " in
-      *" $m "*)
-        type "install_$m" >/dev/null 2>&1 || die "missing install_$m"
-        "install_$m"
-        ;;
-    esac
+    if module_selected "$m"; then
+      type "install_$m" >/dev/null 2>&1 || die "missing install_$m"
+      "install_$m"
+    fi
   done
   printf '\n'
   if dry_run; then
     info "dry run complete: nothing was changed"
   else
     info "done"
-    warn "open a new terminal so the linked configs are loaded"
+    warn "open a new terminal so the new configs are loaded"
   fi
 }
 

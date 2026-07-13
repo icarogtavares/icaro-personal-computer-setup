@@ -1,9 +1,4 @@
 {
-  "attribution": {
-    "commit": "",
-    "pr": ""
-  },
-  "model": "claude-fable-5[1m]",
   "hooks": {
     "Notification": [
       {
@@ -66,13 +61,6 @@
       }
     ]
   },
-  "statusLine": {
-    "type": "command",
-    "command": "~/.claude/statusline.sh"
-  },
-  "enabledPlugins": {},
-  "effortLevel": "high",
-  "theme": "dark",
   "preferredNotifChannel": "iterm2",
   "agentPushNotifEnabled": true,
   "inputNeededNotifEnabled": true

@@ -18,17 +18,17 @@ setup() {
   assert_home_empty
 }
 
-@test "--all --dry-run previews every link" {
+@test "--all --dry-run previews every file" {
   run_install --all --dry-run
   [ "$status" -eq 0 ]
-  assert_contains "$output" "would link $FAKE_HOME/.claude/CLAUDE.md -> $REPO_ROOT/modules/claude/CLAUDE.md"
-  assert_contains "$output" "would link $FAKE_HOME/.claude/settings.json -> $REPO_ROOT/modules/claude/settings.json"
-  assert_contains "$output" "would link $FAKE_HOME/.claude/statusline.sh -> $REPO_ROOT/modules/claude/statusline.sh"
-  assert_contains "$output" "would link $FAKE_HOME/.claude/hooks/notify.sh -> $REPO_ROOT/modules/claude/hooks/notify.sh"
-  assert_contains "$output" "would link $FAKE_HOME/.wezterm.lua -> $REPO_ROOT/modules/wezterm/wezterm.lua"
-  assert_contains "$output" "would link $FAKE_HOME/.zshrc -> $REPO_ROOT/modules/zsh/zshrc"
-  assert_contains "$output" "would link $FAKE_HOME/.zprofile -> $REPO_ROOT/modules/zsh/zprofile"
-  assert_contains "$output" "would link $FAKE_HOME/.p10k.zsh -> $REPO_ROOT/modules/zsh/p10k.zsh"
+  assert_contains "$output" "would copy $FAKE_HOME/.claude/CLAUDE.md"
+  assert_contains "$output" "would write $FAKE_HOME/.claude/settings.json"
+  assert_contains "$output" "would copy $FAKE_HOME/.claude/statusline.sh"
+  assert_contains "$output" "would copy $FAKE_HOME/.claude/hooks/notify.sh"
+  assert_contains "$output" "would copy $FAKE_HOME/.wezterm.lua"
+  assert_contains "$output" "would write $FAKE_HOME/.zshrc"
+  assert_contains "$output" "would copy $FAKE_HOME/.zprofile"
+  assert_contains "$output" "would copy $FAKE_HOME/.p10k.zsh"
 }
 
 @test "--all --dry-run only queries brew and never installs" {
@@ -45,6 +45,7 @@ setup() {
   run_install --dry-run zsh
   [ "$status" -eq 0 ]
   assert_contains "$output" "would keep existing $FAKE_HOME/.zshrc as $FAKE_HOME/.zshrc-backup"
+  assert_contains "$output" "would write $FAKE_HOME/.zshrc"
   [ -f "$FAKE_HOME/.zshrc" ]
   [ ! -e "$FAKE_HOME/.zshrc-backup" ]
   [ "$(cat "$FAKE_HOME/.zshrc")" = "original" ]
