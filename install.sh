@@ -18,12 +18,21 @@ while IFS='|' read -r module_name _; do
   MODULES+=("$module_name")
 done <<<"$MODULE_TABLE"
 
-BLUE=$'\033[1;34m'
-GREEN=$'\033[0;32m'
-YELLOW=$'\033[0;33m'
-RED=$'\033[0;31m'
-BOLD=$'\033[1m'
-RESET=$'\033[0m'
+if [ -t 1 ] && [ -z "${NO_COLOR:-}" ]; then
+  BLUE=$'\033[1;34m'
+  GREEN=$'\033[0;32m'
+  YELLOW=$'\033[0;33m'
+  RED=$'\033[0;31m'
+  BOLD=$'\033[1m'
+  RESET=$'\033[0m'
+else
+  BLUE=""
+  GREEN=""
+  YELLOW=""
+  RED=""
+  BOLD=""
+  RESET=""
+fi
 
 info() { printf '%s %s\n' "${BLUE}==>${RESET}" "$*"; }
 ok()   { printf '%s %s\n' "${GREEN}  ✓${RESET}" "$*"; }
@@ -84,6 +93,7 @@ Options:
 
 Environment:
   SETUP_SKIP_DEPS=1  Same as --skip-deps
+  NO_COLOR           Disable colored output
 
 Existing files are never deleted: they are renamed to <name>-backup,
 or <name>-backup-<timestamp> when a backup already exists.
