@@ -12,7 +12,7 @@ if {[info exists env(MENU_COLOR)]} { set nocolor "NO_COLOR=" }
 spawn env -i HOME=$fakehome PATH=$stubbin:/usr/bin:/bin TERM=xterm $nocolor /bin/bash $repo/install.sh --skip-deps
 
 expect {
-    "enter install" {}
+    "fill/clear module" {}
     timeout { exit 99 }
     eof { exit 98 }
 }
