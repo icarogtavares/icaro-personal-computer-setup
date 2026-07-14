@@ -16,15 +16,18 @@ cd icaro-personal-computer-setup
 
 Requirements: macOS and git (`xcode-select --install`). Everything else — including Homebrew — is detected and offered by the installer when missing.
 
-Running without arguments opens a checkbox menu — move with ↑/↓, toggle with space (or the number keys), then press enter:
+Running without arguments opens a checkbox menu — move with ↑/↓, toggle with space (or the number keys), fill or clear a whole module with its hotkey (`c`/`w`/`z`), then press enter:
 
 ```
-icaro-personal-computer-setup
+icaro-personal-computer-setup · 7/12 selected
 
+── claude (c) · 2/3
 > [x] 1. claude-settings         Claude Code CLI + CLAUDE.md + base settings
   [x] 2. claude-statusline       statusline script + statusLine setting
   [ ] 3. claude-notify           notification hooks + notify preferences
+── wezterm (w) · 0/1
   [ ] 4. wezterm                 WezTerm config + app and Nerd Fonts
+── zsh (z) · 5/8
   [x] 5. zsh-core                Oh My Zsh, p10k + zsh dotfiles
   [x] 6. zsh-git                 git plugin (Oh My Zsh built-in)
   [x] 7. zsh-autosuggestions     zsh-autosuggestions plugin
@@ -35,7 +38,10 @@ icaro-personal-computer-setup
   [ ] 12. bat                    bat (better cat) + theme
 
   ↑↓ move · space/1-9 toggle · a all · n none · enter install · q quit
+  c/w/z fill/clear module
 ```
+
+A module hotkey checks every component of its module and, pressed again when all are checked, clears them; the `· 5/8` labels track the live counts. When a zsh plugin or shell tool is checked without `zsh-core`, the `zsh-core` row shows `[+]` — the installer adds it automatically at install time.
 
 ## Safe to run
 
@@ -131,7 +137,7 @@ The live files are plain copies, so a hand-edited live file never touches the re
 Adding a component:
 
 1. Create or extend a directory under `modules/` with the config files (non-hidden names).
-2. Add a `component|module|description` line to `COMPONENT_TABLE` in `install.sh` — components of a module stay contiguous.
+2. Add a `component|module|description` line to `COMPONENT_TABLE` in `install.sh` — components of a module stay contiguous (the installer aborts at startup otherwise), and the module's menu hotkey is derived from the first free letter of its name.
 3. For a new module, write an `install_<module>` function: dependency checks first, then `copy_file "$MODULES_DIR/<module>/<file>" "$HOME/<dotfile>"` calls. For a new component of an existing module, add a `component_selected <component>` branch to its function.
 
 Run the suite before committing and add tests for the new component's files:
