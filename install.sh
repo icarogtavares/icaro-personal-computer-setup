@@ -3,7 +3,7 @@ set -euo pipefail
 
 REPO_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 MODULES_DIR="$REPO_DIR/modules"
-VERSION="2.0.0"
+VERSION="2.1.0"
 ALL=0
 DRY_RUN=0
 ASSUME_YES=0
@@ -12,6 +12,9 @@ SKIP_DEPS="${SETUP_SKIP_DEPS:-0}"
 BREW_PREFIXES="${SETUP_BREW_PREFIXES:-/opt/homebrew /usr/local}"
 WEZTERM_APP="${SETUP_WEZTERM_APP:-/Applications/WezTerm.app}"
 SELECTED=""
+MENU_LINES=0
+RESERVED_MENU_KEYS="a n q"
+ZSH_CORE_DEPENDENTS="zsh-git zsh-autosuggestions zsh-syntax-highlighting zoxide eza fzf bat"
 
 COMPONENT_TABLE='claude-settings|claude|Claude Code CLI + CLAUDE.md + base settings
 claude-statusline|claude|statusline script + statusLine setting
@@ -30,14 +33,56 @@ COMPONENTS=()
 COMPONENT_MODULES=()
 MODULES=()
 last_module=""
+seen_modules=""
 while IFS='|' read -r component_name module_name _; do
   COMPONENTS+=("$component_name")
   COMPONENT_MODULES+=("$module_name")
   if [ "$module_name" != "$last_module" ]; then
+    case " $seen_modules " in
+      *" $module_name "*)
+        printf 'error: COMPONENT_TABLE: components of module %s are not contiguous\n' "$module_name" >&2
+        exit 1
+        ;;
+    esac
     MODULES+=("$module_name")
+    seen_modules="$seen_modules $module_name"
     last_module="$module_name"
   fi
 done <<<"$COMPONENT_TABLE"
+
+MODULE_KEYS=()
+MODULE_KEYS_UPPER=()
+MODULE_KEY_LEGEND=""
+used_menu_keys="$RESERVED_MENU_KEYS"
+for module_name in "${MODULES[@]}"; do
+  assigned_key=""
+  key_pos=0
+  while [ "$key_pos" -lt "${#module_name}" ]; do
+    key_char="${module_name:$key_pos:1}"
+    case "$key_char" in
+      [a-z])
+        case " $used_menu_keys " in
+          *" $key_char "*) ;;
+          *)
+            assigned_key="$key_char"
+            break
+            ;;
+        esac
+        ;;
+    esac
+    key_pos=$((key_pos + 1))
+  done
+  if [ -n "$assigned_key" ]; then
+    used_menu_keys="$used_menu_keys $assigned_key"
+    if [ -n "$MODULE_KEY_LEGEND" ]; then
+      MODULE_KEY_LEGEND="$MODULE_KEY_LEGEND/$assigned_key"
+    else
+      MODULE_KEY_LEGEND="$assigned_key"
+    fi
+  fi
+  MODULE_KEYS+=("$assigned_key")
+  MODULE_KEYS_UPPER+=("$(printf '%s' "$assigned_key" | tr '[:lower:]' '[:upper:]')")
+done
 
 if [ -t 1 ] && [ -z "${NO_COLOR:-}" ]; then
   BLUE=$'\033[1;34m'
@@ -138,7 +183,8 @@ the sources under modules/. Existing files are never deleted: they are
 renamed to <name>-backup, or <name>-backup-<timestamp> when a backup
 already exists.
 
-Run with no arguments in a terminal for an interactive menu.
+Run with no arguments in a terminal for an interactive menu; module
+hotkeys ($MODULE_KEY_LEGEND) fill or clear a whole module at once.
 EOF
 }
 
@@ -461,8 +507,9 @@ module_selected() {
 }
 
 resolve_selection() {
-  local component
-  for component in zsh-git zsh-autosuggestions zsh-syntax-highlighting zoxide eza fzf bat; do
+  local dependents component
+  read -r -a dependents <<<"$ZSH_CORE_DEPENDENTS"
+  for component in ${dependents[@]+"${dependents[@]}"}; do
     if component_selected "$component" && ! component_selected zsh-core; then
       info "$component requires zsh-core; selecting it"
       select_component zsh-core
@@ -510,17 +557,86 @@ menu_restore() {
   stty echo 2>/dev/null || true
 }
 
-menu_draw() {
-  local i mark desc pointer max_key
-  if [ "$1" = "1" ]; then
-    printf '\033[%dA\033[J' "$((${#COMPONENTS[@]} + 4))"
-  fi
-  printf '%s\n\n' "${BOLD}icaro-personal-computer-setup${RESET}"
+module_key_of() {
+  local i
+  MODULE_KEY=""
+  i=0
+  while [ "$i" -lt "${#MODULES[@]}" ]; do
+    if [ "${MODULES[$i]}" = "$1" ]; then
+      MODULE_KEY="${MODULE_KEYS[$i]}"
+      return 0
+    fi
+    i=$((i + 1))
+  done
+}
+
+module_checked_count() {
+  local i
+  MODULE_TOTAL=0
+  MODULE_ON=0
   i=0
   while [ "$i" -lt "${#COMPONENTS[@]}" ]; do
+    if [ "${COMPONENT_MODULES[$i]}" = "$1" ]; then
+      MODULE_TOTAL=$((MODULE_TOTAL + 1))
+      if [ "${checked[i]}" = "1" ]; then
+        MODULE_ON=$((MODULE_ON + 1))
+      fi
+    fi
+    i=$((i + 1))
+  done
+}
+
+zsh_core_implied() {
+  local i
+  i=0
+  while [ "$i" -lt "${#COMPONENTS[@]}" ]; do
+    if [ "${checked[i]}" = "1" ]; then
+      case " $ZSH_CORE_DEPENDENTS " in
+        *" ${COMPONENTS[$i]} "*) return 0 ;;
+      esac
+    fi
+    i=$((i + 1))
+  done
+  return 1
+}
+
+menu_module_label() {
+  local label
+  module_key_of "$1"
+  module_checked_count "$1"
+  label="── $1 · $MODULE_ON/$MODULE_TOTAL"
+  if [ -n "$MODULE_KEY" ]; then
+    label="── $1 ($MODULE_KEY) · $MODULE_ON/$MODULE_TOTAL"
+  fi
+  printf '%s\n' "${BLUE}${label}${RESET}"
+}
+
+menu_draw() {
+  local i mark desc pointer max_key lines on
+  if [ "$1" = "1" ]; then
+    printf '\033[%dA\033[J' "$MENU_LINES"
+  fi
+  on=0
+  i=0
+  while [ "$i" -lt "${#COMPONENTS[@]}" ]; do
+    if [ "${checked[i]}" = "1" ]; then
+      on=$((on + 1))
+    fi
+    i=$((i + 1))
+  done
+  printf '%s · %d/%d selected\n\n' "${BOLD}icaro-personal-computer-setup${RESET}" "$on" "${#COMPONENTS[@]}"
+  lines=2
+  i=0
+  while [ "$i" -lt "${#COMPONENTS[@]}" ]; do
+    if [ "$i" = "0" ] || [ "${COMPONENT_MODULES[$i]}" != "${COMPONENT_MODULES[$((i - 1))]}" ]; then
+      menu_module_label "${COMPONENT_MODULES[$i]}"
+      lines=$((lines + 1))
+    fi
     mark=" "
     if [ "${checked[i]}" = "1" ]; then
       mark="${GREEN}x${RESET}"
+    elif [ "${COMPONENTS[$i]}" = "zsh-core" ] && zsh_core_implied; then
+      mark="${BLUE}+${RESET}"
     fi
     pointer="  "
     if [ "$i" = "$cursor" ]; then
@@ -528,6 +644,7 @@ menu_draw() {
     fi
     desc="$(describe_component "${COMPONENTS[$i]}")"
     printf '%s[%s] %d. %-23s %s\n' "$pointer" "$mark" "$((i + 1))" "${COMPONENTS[$i]}" "${desc:0:44}"
+    lines=$((lines + 1))
     i=$((i + 1))
   done
   max_key=${#COMPONENTS[@]}
@@ -535,6 +652,12 @@ menu_draw() {
     max_key=9
   fi
   printf '\n  ↑↓ move · space/1-%d toggle · a all · n none · enter install · q quit\n' "$max_key"
+  lines=$((lines + 2))
+  if [ -n "$MODULE_KEY_LEGEND" ]; then
+    printf '  %s fill/clear module\n' "$MODULE_KEY_LEGEND"
+    lines=$((lines + 1))
+  fi
+  MENU_LINES=$lines
 }
 
 toggle_row() {
@@ -544,6 +667,38 @@ toggle_row() {
     checked[$1]=1
   fi
   menu_draw 1
+}
+
+toggle_module() {
+  local i target
+  module_checked_count "$1"
+  target=1
+  if [ "$MODULE_ON" = "$MODULE_TOTAL" ]; then
+    target=0
+  fi
+  i=0
+  while [ "$i" -lt "${#COMPONENTS[@]}" ]; do
+    if [ "${COMPONENT_MODULES[$i]}" = "$1" ]; then
+      checked[i]=$target
+    fi
+    i=$((i + 1))
+  done
+  menu_draw 1
+}
+
+module_hotkey() {
+  local i
+  i=0
+  while [ "$i" -lt "${#MODULES[@]}" ]; do
+    if [ -n "${MODULE_KEYS[$i]}" ]; then
+      if [ "$1" = "${MODULE_KEYS[$i]}" ] || [ "$1" = "${MODULE_KEYS_UPPER[$i]}" ]; then
+        toggle_module "${MODULES[$i]}"
+        return 0
+      fi
+    fi
+    i=$((i + 1))
+  done
+  return 0
 }
 
 interactive_select() {
@@ -579,6 +734,14 @@ interactive_select() {
               menu_draw 1
             fi
             ;;
+          "["[0-9] | "[;")
+            while IFS= read -rsn1 -t 1 key; do
+              case "$key" in
+                [0-9] | ";") ;;
+                *) break ;;
+              esac
+            done
+            ;;
         esac
         ;;
       " ")
@@ -612,6 +775,9 @@ interactive_select() {
         ;;
       "")
         break
+        ;;
+      *)
+        module_hotkey "$key"
         ;;
     esac
   done

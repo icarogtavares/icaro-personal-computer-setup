@@ -19,6 +19,7 @@ expect {
 
 foreach key $keys {
     after 100
+    expect -timeout 0 -re {.+} {}
     switch -- $key {
         ENTER { send "\r" }
         CTRL_C { send "\003" }
@@ -26,7 +27,7 @@ foreach key $keys {
         DOWN { send "\033\[B" }
         SPACE { send " " }
         ESC { send "\033" }
-        PAUSE { after 2000 }
+        PAUSE { after 2000; expect -timeout 0 -re {.+} {} }
         default { send -- $key }
     }
 }

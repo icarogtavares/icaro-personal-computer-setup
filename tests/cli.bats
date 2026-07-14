@@ -20,13 +20,13 @@ setup() {
 @test "--version exits 0 and prints the version" {
   run_install --version
   [ "$status" -eq 0 ]
-  [ "$output" = "install.sh 2.0.0" ]
+  [ "$output" = "install.sh 2.1.0" ]
 }
 
 @test "-V matches --version" {
   run_install -V
   [ "$status" -eq 0 ]
-  [ "$output" = "install.sh 2.0.0" ]
+  [ "$output" = "install.sh 2.1.0" ]
 }
 
 @test "--list exits 0 and prints the components in registry order" {
